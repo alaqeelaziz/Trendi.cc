@@ -1,0 +1,2 @@
+# Trendi.cc
+trends prices
