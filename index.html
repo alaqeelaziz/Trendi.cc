@@ -111,12 +111,19 @@ tr:hover td{background:rgba(75,191,224,.04)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:15px}
 .loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:36px;color:var(--text2);font-size:12px}
 .info-bar{background:rgba(75,191,224,.06);border:1px solid rgba(75,191,224,.15);border-radius:7px;padding:7px 12px;font-size:11px;color:var(--sky);margin-bottom:11px}
-.news-card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;cursor:pointer;transition:.2s;text-decoration:none;display:block;margin-bottom:8px;color:inherit}
-.news-card:hover{border-color:var(--b3);transform:translateX(-2px)}
-body.ltr .news-card:hover{transform:translateX(2px)}
+.news-card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;cursor:pointer;transition:border-color .2s,box-shadow .2s;text-decoration:none;display:block;margin-bottom:8px;color:inherit}
+.news-card:hover{border-color:var(--b3)}
+.news-card.expanded{border-color:var(--b4);box-shadow:0 0 0 1px rgba(114,193,64,.3)}
 .ns{font-size:9.5px;color:var(--b4);font-weight:700;letter-spacing:.5px;margin-bottom:4px}
 .nt{font-size:12.5px;font-weight:500;color:var(--text);line-height:1.5}
 .nm{font-size:10px;color:var(--text3);margin-top:3px}
+.news-expand{max-height:0;overflow:hidden;transition:max-height .35s ease,opacity .3s;opacity:0}
+.news-expand.open{max-height:300px;opacity:1}
+.news-summary{font-size:12px;color:var(--text2);line-height:1.65;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.news-readmore{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:11px;color:var(--b3);font-weight:600;text-decoration:none}
+.news-readmore:hover{color:var(--b4)}
+.news-chevron{font-size:10px;transition:transform .3s;display:inline-block;color:var(--text3);margin-right:4px}
+.news-card.expanded .news-chevron{transform:rotate(180deg)}
 /* converter */
 .conv-w{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:15px}
 .conv-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -508,16 +515,33 @@ function reloadTab(i){
 function extractRealUrl(googleUrl){
   if(!googleUrl)return'#';
   try{
-    // Google News URLs contain the real URL encoded in the path
     const u=new URL(googleUrl);
-    // Format: https://news.google.com/rss/articles/... or redirect URL
     const urlParam=u.searchParams.get('url');
     if(urlParam)return urlParam;
-    // Try to extract from path for newer Google News format
     const match=googleUrl.match(/url=([^&]+)/);
     if(match)return decodeURIComponent(match[1]);
   }catch(e){}
   return googleUrl;
+}
+
+function toggleNewsCard(el,summary,link){
+  const isExpanded=el.classList.contains('expanded');
+  // Close all others
+  document.querySelectorAll('.news-card.expanded').forEach(c=>{
+    c.classList.remove('expanded');
+    c.querySelector('.news-expand').classList.remove('open');
+  });
+  if(isExpanded)return;
+  el.classList.add('expanded');
+  const exp=el.querySelector('.news-expand');
+  exp.classList.add('open');
+  // Fill summary if not already done
+  const sumEl=el.querySelector('.news-summary');
+  if(sumEl&&sumEl.dataset.loaded!=='1'){
+    sumEl.dataset.loaded='1';
+    const clean=summary?summary.replace(/<[^>]+>/g,'').slice(0,300):'';
+    sumEl.textContent=clean||(LANGS[CL]&&LANGS[CL].loading)||'...';
+  }
 }
 
 async function loadNews(){
@@ -529,19 +553,32 @@ async function loadNews(){
     try{
       const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://news.google.com/rss/search?q='+q+'&hl=en&gl=US&ceid=US:en')+'&count=4');
       const d=await r.json();
-      if(d.items)d.items.slice(0,4).forEach(it=>{
-        // rss2json already resolves the real URL in the link field
-        items.push(it);
-      });
+      if(d.items)d.items.slice(0,4).forEach(it=>items.push(it));
     }catch(e){}
   }
   const L=LANGS[CL];
   const cats=['📊','💰','🛢️','🔐','📈','🏦'];
-  const final=items.length>=6?items:L.headlines.map((h,i)=>({title:h,link:'',pubDate:'',source:{name:'Market Trends'}}));
+  const final=items.length>=6?items:L.headlines.map((h,i)=>({title:h,link:'',pubDate:'',source:{name:'Market Trends'},description:''}));
   c.innerHTML=final.slice(0,10).map((n,i)=>{
     const realLink=n.link&&n.link!=='#'?n.link:'';
-    const linkAttr=realLink?`href="${realLink}" target="_blank" rel="noopener noreferrer"`:'style="cursor:default"';
-    return`<a class="news-card" ${linkAttr}><div style="display:flex;justify-content:space-between;align-items:center"><div class="ns">${cats[i%6]} ${(n.source&&n.source.name)||'Global Finance'}</div><div class="nm">${(n.pubDate||'').slice(0,10)||new Date().toISOString().slice(0,10)}</div></div><div class="nt">${n.title||''}</div>${realLink?'<div style="font-size:10px;color:var(--b3);margin-top:4px">↗ '+new URL(realLink).hostname.replace("www.",'')+'</div>':''}</a>`;
+    const rawSummary=(n.description||'').replace(/<[^>]+>/g,'').trim().slice(0,280);
+    const srcHost=realLink?new URL(realLink).hostname.replace('www.',''):'';
+    const summaryEsc=rawSummary.replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+    const linkEsc=realLink.replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+    return`<div class="news-card" onclick="toggleNewsCard(this,'${summaryEsc}','${linkEsc}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="ns">${cats[i%6]} ${(n.source&&n.source.name)||'Global Finance'}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="nm">${(n.pubDate||'').slice(0,10)||new Date().toISOString().slice(0,10)}</div>
+          <span class="news-chevron">▼</span>
+        </div>
+      </div>
+      <div class="nt">${n.title||''}</div>
+      <div class="news-expand">
+        <div class="news-summary">${rawSummary||'...'}</div>
+        ${realLink?`<a class="news-readmore" href="${realLink}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">↗ ${srcHost} &nbsp;→</a>`:''}
+      </div>
+    </div>`;
   }).join('');
 }
 
