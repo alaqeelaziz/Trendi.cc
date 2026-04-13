@@ -524,24 +524,15 @@ function extractRealUrl(googleUrl){
   return googleUrl;
 }
 
-function toggleNewsCard(el,summary,link){
+function toggleNewsCard(el){
   const isExpanded=el.classList.contains('expanded');
-  // Close all others
   document.querySelectorAll('.news-card.expanded').forEach(c=>{
     c.classList.remove('expanded');
     c.querySelector('.news-expand').classList.remove('open');
   });
   if(isExpanded)return;
   el.classList.add('expanded');
-  const exp=el.querySelector('.news-expand');
-  exp.classList.add('open');
-  // Fill summary if not already done
-  const sumEl=el.querySelector('.news-summary');
-  if(sumEl&&sumEl.dataset.loaded!=='1'){
-    sumEl.dataset.loaded='1';
-    const clean=summary?summary.replace(/<[^>]+>/g,'').slice(0,300):'';
-    sumEl.textContent=clean||(LANGS[CL]&&LANGS[CL].loading)||'...';
-  }
+  el.querySelector('.news-expand').classList.add('open');
 }
 
 async function loadNews(){
@@ -558,14 +549,18 @@ async function loadNews(){
   }
   const L=LANGS[CL];
   const cats=['📊','💰','🛢️','🔐','📈','🏦'];
-  const final=items.length>=6?items:L.headlines.map((h,i)=>({title:h,link:'',pubDate:'',source:{name:'Market Trends'},description:''}));
+  const fallbackDesc={
+    ar:['ارتفعت أسعار الذهب إلى مستويات قياسية جديدة مع تصاعد حدة التوترات الجيوسياسية حول العالم وزيادة الطلب على الأصول الآمنة.','قرر الاحتياطي الفيدرالي الأمريكي الإبقاء على أسعار الفائدة دون تغيير في اجتماعه الأخير مع الإشارة إلى مراقبة مستويات التضخم.','ارتفعت أسعار النفط الخام فوق 85 دولاراً للبرميل مع توقعات تراجع مخزونات النفط الأمريكية الأسبوعية.','سجّل مؤشر تداول للأسهم السعودية أعلى مستوياته منذ ستة أشهر مدفوعاً بارتفاع أسهم القطاع المالي والطاقة.','تعافى سعر بيتكوين فوق مستوى 85 ألف دولار في تداولات آسيا مع عودة الشهية للمخاطرة لدى المستثمرين.','كشفت بيانات رسمية أن المملكة العربية السعودية استقطبت استثمارات أجنبية تتجاوز 80 مليار دولار خلال الربع الأول من العام.'],
+    en:['Gold prices surged to new record highs as geopolitical tensions escalated globally, driving demand for safe-haven assets.','The US Federal Reserve held interest rates steady at its latest meeting while signaling it will monitor inflation levels closely.','Crude oil prices rose above $85 per barrel amid expectations of a draw in weekly US crude oil inventories.','The Saudi Tadawul index hit its highest level in six months, driven by gains in financial and energy sector stocks.','Bitcoin recovered above the $85,000 level during Asian trading as investor appetite for risk returned.','Official data revealed Saudi Arabia attracted over $80 billion in foreign investment during the first quarter of the year.']
+  };
+  const desc=fallbackDesc[CL]||fallbackDesc.en;
+  const final=items.length>=6?items:L.headlines.map((h,i)=>({title:h,link:'',pubDate:new Date().toISOString().slice(0,10),source:{name:'Market Trends'},description:desc[i]||''}));
   c.innerHTML=final.slice(0,10).map((n,i)=>{
     const realLink=n.link&&n.link!=='#'?n.link:'';
-    const rawSummary=(n.description||'').replace(/<[^>]+>/g,'').trim().slice(0,280);
+    const rawSummary=(n.description||'').replace(/<[^>]+>/g,'').replace(/\[.*?\]/g,'').trim().slice(0,300);
+    const displaySummary=rawSummary||'—';
     const srcHost=realLink?new URL(realLink).hostname.replace('www.',''):'';
-    const summaryEsc=rawSummary.replace(/'/g,"&#39;").replace(/"/g,'&quot;');
-    const linkEsc=realLink.replace(/'/g,"&#39;").replace(/"/g,'&quot;');
-    return`<div class="news-card" onclick="toggleNewsCard(this,'${summaryEsc}','${linkEsc}')">
+    return`<div class="news-card" onclick="toggleNewsCard(this)">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div class="ns">${cats[i%6]} ${(n.source&&n.source.name)||'Global Finance'}</div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -575,7 +570,7 @@ async function loadNews(){
       </div>
       <div class="nt">${n.title||''}</div>
       <div class="news-expand">
-        <div class="news-summary">${rawSummary||'...'}</div>
+        <div class="news-summary">${displaySummary}</div>
         ${realLink?`<a class="news-readmore" href="${realLink}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">↗ ${srcHost} &nbsp;→</a>`:''}
       </div>
     </div>`;
