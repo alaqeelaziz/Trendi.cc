@@ -156,18 +156,18 @@ footer a{color:var(--b3);text-decoration:none}
 <!-- LANG BAR -->
 <div class="lang-bar">
   <span style="font-size:10px;color:var(--text3);font-weight:600;white-space:nowrap">🌐</span>
-  <button class="lang-btn active" onclick="setLang('ar')" data-lang="ar">🇸🇦 العربية</button>
-  <button class="lang-btn" onclick="setLang('en')" data-lang="en">🇬🇧 English</button>
-  <button class="lang-btn" onclick="setLang('fr')" data-lang="fr">🇫🇷 Français</button>
-  <button class="lang-btn" onclick="setLang('es')" data-lang="es">🇪🇸 Español</button>
-  <button class="lang-btn" onclick="setLang('tr')" data-lang="tr">🇹🇷 Türkçe</button>
-  <button class="lang-btn" onclick="setLang('zh')" data-lang="zh">🇨🇳 中文</button>
-  <button class="lang-btn" onclick="setLang('de')" data-lang="de">🇩🇪 Deutsch</button>
-  <button class="lang-btn" onclick="setLang('pt')" data-lang="pt">🇧🇷 Português</button>
-  <button class="lang-btn" onclick="setLang('ru')" data-lang="ru">🇷🇺 Русский</button>
-  <button class="lang-btn" onclick="setLang('ja')" data-lang="ja">🇯🇵 日本語</button>
-  <button class="lang-btn" onclick="setLang('ko')" data-lang="ko">🇰🇷 한국어</button>
-  <button class="lang-btn" onclick="setLang('hi')" data-lang="hi">🇮🇳 हिंदी</button>
+  <button class="lang-btn active" type="button" onclick="setLang('ar');return false;" data-lang="ar">🇸🇦 العربية</button>
+  <button class="lang-btn" type="button" onclick="setLang('en');return false;" data-lang="en">🇬🇧 English</button>
+  <button class="lang-btn" type="button" onclick="setLang('fr');return false;" data-lang="fr">🇫🇷 Français</button>
+  <button class="lang-btn" type="button" onclick="setLang('es');return false;" data-lang="es">🇪🇸 Español</button>
+  <button class="lang-btn" type="button" onclick="setLang('tr');return false;" data-lang="tr">🇹🇷 Türkçe</button>
+  <button class="lang-btn" type="button" onclick="setLang('zh');return false;" data-lang="zh">🇨🇳 中文</button>
+  <button class="lang-btn" type="button" onclick="setLang('de');return false;" data-lang="de">🇩🇪 Deutsch</button>
+  <button class="lang-btn" type="button" onclick="setLang('pt');return false;" data-lang="pt">🇧🇷 Português</button>
+  <button class="lang-btn" type="button" onclick="setLang('ru');return false;" data-lang="ru">🇷🇺 Русский</button>
+  <button class="lang-btn" type="button" onclick="setLang('ja');return false;" data-lang="ja">🇯🇵 日本語</button>
+  <button class="lang-btn" type="button" onclick="setLang('ko');return false;" data-lang="ko">🇰🇷 한국어</button>
+  <button class="lang-btn" type="button" onclick="setLang('hi');return false;" data-lang="hi">🇮🇳 हिंदी</button>
 </div>
 
 <!-- TICKERS -->
@@ -270,20 +270,20 @@ footer a{color:var(--b3);text-decoration:none}
   <div class="hdr-r">
     <div class="clk-b" id="clk">--:--:--</div>
     <div class="live-b"><div class="ldot"></div><span id="live-txt">مباشر</span></div>
-    <button class="icon-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle theme">☀</button>
+    <button class="icon-btn" type="button" onclick="toggleTheme();return false;" id="theme-btn" title="Toggle theme">☀</button>
   </div>
 </header>
 
 <!-- TABS -->
 <div class="tabs-wrap">
   <div class="tabs">
-    <div class="tab active" onclick="sw(0)">📰 <span class="tl" data-k="tabNews">الأخبار</span></div>
-    <div class="tab" onclick="sw(1)">🥇 <span class="tl" data-k="tabMetals">المعادن</span></div>
-    <div class="tab" onclick="sw(2)">📈 <span class="tl" data-k="tabStocks">الأسهم</span></div>
-    <div class="tab" onclick="sw(3)">₿ <span class="tl" data-k="tabCrypto">العملات الرقمية</span></div>
-    <div class="tab" onclick="sw(4)">🛢️ <span class="tl" data-k="tabOil">النفط</span></div>
-    <div class="tab" onclick="sw(5)">💱 <span class="tl" data-k="tabForex">العملات</span></div>
-    <div class="tab" onclick="sw(6)">🏷️ <span class="tl" data-k="tabDiscount">حاسبة الخصم</span></div>
+    <div class="tab active" onclick="sw(0);return false;">📰 <span class="tl" data-k="tabNews">الأخبار</span></div>
+    <div class="tab" onclick="sw(1);return false;">🥇 <span class="tl" data-k="tabMetals">المعادن</span></div>
+    <div class="tab" onclick="sw(2);return false;">📈 <span class="tl" data-k="tabStocks">الأسهم</span></div>
+    <div class="tab" onclick="sw(3);return false;">₿ <span class="tl" data-k="tabCrypto">العملات الرقمية</span></div>
+    <div class="tab" onclick="sw(4);return false;">🛢️ <span class="tl" data-k="tabOil">النفط</span></div>
+    <div class="tab" onclick="sw(5);return false;">💱 <span class="tl" data-k="tabForex">العملات</span></div>
+    <div class="tab" onclick="sw(6);return false;">🏷️ <span class="tl" data-k="tabDiscount">حاسبة الخصم</span></div>
   </div>
 </div>
 
@@ -447,7 +447,8 @@ setInterval(()=>{
   });
 },4500);
 
-function setLang(lang){
+function setLang(lang,e){
+  if(e){e.preventDefault();e.stopPropagation();}
   CL=lang;
   const L=LANGS[lang];
   document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset&&b.dataset.lang===lang));
@@ -504,6 +505,21 @@ function reloadTab(i){
   else if(i===5){if(!Object.keys(fxRates).length)loadForex();else conv();}
 }
 
+function extractRealUrl(googleUrl){
+  if(!googleUrl)return'#';
+  try{
+    // Google News URLs contain the real URL encoded in the path
+    const u=new URL(googleUrl);
+    // Format: https://news.google.com/rss/articles/... or redirect URL
+    const urlParam=u.searchParams.get('url');
+    if(urlParam)return urlParam;
+    // Try to extract from path for newer Google News format
+    const match=googleUrl.match(/url=([^&]+)/);
+    if(match)return decodeURIComponent(match[1]);
+  }catch(e){}
+  return googleUrl;
+}
+
 async function loadNews(){
   const c=document.getElementById('news-c');
   c.innerHTML='<div class="loading"><div class="sp"></div> '+T('loading')+'</div>';
@@ -513,13 +529,20 @@ async function loadNews(){
     try{
       const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://news.google.com/rss/search?q='+q+'&hl=en&gl=US&ceid=US:en')+'&count=4');
       const d=await r.json();
-      if(d.items)d.items.slice(0,4).forEach(it=>items.push(it));
+      if(d.items)d.items.slice(0,4).forEach(it=>{
+        // rss2json already resolves the real URL in the link field
+        items.push(it);
+      });
     }catch(e){}
   }
   const L=LANGS[CL];
   const cats=['📊','💰','🛢️','🔐','📈','🏦'];
-  const final=items.length>=6?items:L.headlines.map((h,i)=>({title:h,link:'#',pubDate:'',source:{name:'Market Trends'}}));
-  c.innerHTML=final.slice(0,10).map((n,i)=>`<a class="news-card" href="${n.link||'#'}" target="_blank" rel="noopener"><div style="display:flex;justify-content:space-between;align-items:center"><div class="ns">${cats[i%6]} ${(n.source&&n.source.name)||'Global Finance'}</div><div class="nm">${(n.pubDate||'').slice(0,10)||new Date().toISOString().slice(0,10)}</div></div><div class="nt">${n.title||''}</div></a>`).join('');
+  const final=items.length>=6?items:L.headlines.map((h,i)=>({title:h,link:'',pubDate:'',source:{name:'Market Trends'}}));
+  c.innerHTML=final.slice(0,10).map((n,i)=>{
+    const realLink=n.link&&n.link!=='#'?n.link:'';
+    const linkAttr=realLink?`href="${realLink}" target="_blank" rel="noopener noreferrer"`:'style="cursor:default"';
+    return`<a class="news-card" ${linkAttr}><div style="display:flex;justify-content:space-between;align-items:center"><div class="ns">${cats[i%6]} ${(n.source&&n.source.name)||'Global Finance'}</div><div class="nm">${(n.pubDate||'').slice(0,10)||new Date().toISOString().slice(0,10)}</div></div><div class="nt">${n.title||''}</div>${realLink?'<div style="font-size:10px;color:var(--b3);margin-top:4px">↗ '+new URL(realLink).hostname.replace("www.",'')+'</div>':''}</a>`;
+  }).join('');
 }
 
 function loadMetals(){
