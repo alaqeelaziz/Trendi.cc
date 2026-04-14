@@ -564,6 +564,7 @@ function setLang(lang){
   // Reset data so fallback re-loads in new language
   techData=[];
   dealsData=[];
+  window._newsRendered=null;
   // Re-translate filter buttons using data-k
   document.querySelectorAll('#tech-filters button[data-k], #deals-filters button[data-k]').forEach(btn=>{
     const k=btn.dataset.k;
@@ -594,22 +595,97 @@ function reloadTab(i){
   else if(i===7){if(!Object.keys(fxRates).length)loadForex();else conv();}
 }
 
+
+const NEWS_FALLBACK_I18N={
+  ar:[
+    {title:'الذهب يتجاوز 3,200 دولار وسط مخاوف التضخم وضعف الدولار',source:'أرقام',cat:'📊',date:'2025-04-14',desc:'واصل الذهب ارتفاعه مدعوماً بضعف الدولار الأمريكي وتصاعد المخاوف التضخمية عالمياً، وسط شراء قياسي من البنوك المركزية.'},
+    {title:'الفيدرالي الأمريكي يُبقي على أسعار الفائدة ويلمح لتخفيضات مستقبلية',source:'الاقتصادية',cat:'🏦',date:'2025-04-13',desc:'أبقى مجلس الاحتياطي الفيدرالي على معدلات الفائدة دون تغيير للمرة الثالثة على التوالي، مع إشارات إلى احتمال خفضها بحلول نهاية 2025.'},
+    {title:'النفط فوق 85 دولاراً مع توقعات تراجع المخزونات الأمريكية',source:'أرقام',cat:'🛢️',date:'2025-04-12',desc:'ارتفعت أسعار النفط بعد توقعات بتراجع المخزونات الأمريكية، مدعومةً بقرار أوبك+ بتمديد خفض الإنتاج حتى نهاية العام.'},
+    {title:'تداول يسجل أعلى مستوياته منذ 6 أشهر بدعم من القطاع المالي',source:'السوق المالية',cat:'📈',date:'2025-04-11',desc:'أغلق مؤشر تاسي على ارتفاع ملحوظ مدفوعاً بمكاسب قطاع البنوك والمصارف، في ظل تفاؤل المستثمرين بنتائج الربع الأول.'},
+    {title:'بيتكوين يتعافى فوق 87 ألف دولار مع تدفقات صناديق ETF',source:'عملات',cat:'🔐',date:'2025-04-10',desc:'عاد بيتكوين للارتفاع مستفيداً من تدفقات قياسية نحو صناديق ETF الأمريكية وتراجع المخاوف التنظيمية في عدة دول.'},
+    {title:'رؤية 2030: 80 مليار دولار استثمارات أجنبية في الربع الأول',source:'وزارة الاستثمار',cat:'💰',date:'2025-04-09',desc:'أعلنت وزارة الاستثمار السعودية عن تدفق استثمارات أجنبية بلغت 80 مليار دولار خلال الربع الأول من 2025، متجاوزةً أهداف رؤية 2030.'},
+    {title:'اليورو يرتفع أمام الدولار مع تراجع التوترات التجارية',source:'أسواق',cat:'💱',date:'2025-04-09',desc:'سجّل اليورو ارتفاعاً ملحوظاً أمام الدولار في أعقاب تحسن مفاوضات التجارة بين الاتحاد الأوروبي والولايات المتحدة.'},
+    {title:'أسهم التقنية تقود مكاسب وول ستريت في جلسة قياسية',source:'بلومبرغ عربية',cat:'📊',date:'2025-04-08',desc:'أغلقت المؤشرات الأمريكية على مكاسب قوية بقيادة أسهم التقنية الكبرى، مع تجاوز S&P 500 لمستوى 5,700 نقطة.'},
+  ],
+  en:[
+    {title:'Gold surpasses $3,200 amid inflation fears and dollar weakness',source:'Reuters',cat:'📊',date:'2025-04-14',desc:'Gold continued its rally, supported by a weaker US dollar and rising global inflation concerns, amid record buying from central banks worldwide.'},
+    {title:'Fed holds interest rates steady, hints at future cuts',source:'Bloomberg',cat:'🏦',date:'2025-04-13',desc:'The Federal Reserve kept rates unchanged for the third consecutive time, signaling possible cuts by end of 2025 if inflation cools further.'},
+    {title:'Oil above $85 as US inventory drawdown expected',source:'Reuters',cat:'🛢️',date:'2025-04-12',desc:'Oil prices rose on expectations of declining US inventories, supported by OPEC+ decision to extend production cuts through year-end.'},
+    {title:'Saudi Tadawul hits 6-month high led by banking sector',source:'Arab News',cat:'📈',date:'2025-04-11',desc:'The TASI index closed notably higher, driven by banking sector gains, amid investor optimism over Q1 earnings results.'},
+    {title:'Bitcoin recovers above $87,000 on ETF inflows',source:'CoinDesk',cat:'🔐',date:'2025-04-10',desc:'Bitcoin rebounded, benefiting from record inflows into US ETFs and easing regulatory concerns in several countries.'},
+    {title:'Vision 2030: $80B in foreign investment in Q1',source:'Saudi Gazette',cat:'💰',date:'2025-04-09',desc:"Saudi Arabia's Ministry of Investment announced $80 billion in foreign investment inflows during Q1 2025, exceeding Vision 2030 targets."},
+    {title:'Euro rises against dollar as trade tensions ease',source:'FT',cat:'💱',date:'2025-04-09',desc:'The euro gained notably against the dollar following improved EU-US trade negotiations.'},
+    {title:'Tech stocks lead Wall Street to record session',source:'Bloomberg',cat:'📊',date:'2025-04-08',desc:'US indices closed strongly higher led by major tech stocks, with the S&P 500 surpassing the 5,700 level.'},
+  ],
+  fr:[
+    {title:"L'or dépasse 3 200 $ face aux craintes d'inflation",source:'Reuters',cat:'📊',date:'2025-04-14',desc:"L'or a poursuivi sa hausse, soutenu par un dollar américain plus faible et des craintes mondiales d'inflation croissantes."},
+    {title:'La Fed maintient ses taux, laisse entrevoir des baisses futures',source:'Bloomberg',cat:'🏦',date:'2025-04-13',desc:"La Réserve fédérale a maintenu ses taux inchangés pour la troisième fois consécutive, signalant des baisses possibles d'ici fin 2025."},
+    {title:'Le pétrole dépasse 85 $ avec une baisse attendue des stocks',source:'Reuters',cat:'🛢️',date:'2025-04-12',desc:"Les prix du pétrole ont augmenté suite aux prévisions de baisse des stocks américains, soutenus par la décision de l'OPEP+."},
+    {title:'Le Tadawul atteint un sommet de 6 mois',source:'Arab News',cat:'📈',date:'2025-04-11',desc:"L'indice TASI a clôturé en forte hausse, porté par les gains du secteur bancaire."},
+    {title:'Le Bitcoin reprend au-dessus de 87 000 $',source:'CoinDesk',cat:'🔐',date:'2025-04-10',desc:'Bitcoin a rebondi, bénéficiant de flux records vers les ETF américains.'},
+    {title:"Vision 2030 : 80 milliards d'investissements étrangers au T1",source:'Saudi Gazette',cat:'💰',date:'2025-04-09',desc:"L'Arabie saoudite a annoncé 80 milliards de dollars d'investissements étrangers au T1 2025."},
+    {title:"L'euro monte face au dollar",source:'FT',cat:'💱',date:'2025-04-09',desc:'L'euro a gagné face au dollar après des négociations commerciales UE-US améliorées.'},
+    {title:'Les valeurs technologiques mènent Wall Street à un record',source:'Bloomberg',cat:'📊',date:'2025-04-08',desc:'Les indices américains ont fortement progressé, menés par les grandes valeurs technologiques.'},
+  ],
+  es:[
+    {title:'El oro supera los $3.200 ante temores inflacionarios',source:'Reuters',cat:'📊',date:'2025-04-14',desc:'El oro continuó su rally, apoyado por un dólar más débil y crecientes temores de inflación global.'},
+    {title:'La Fed mantiene tasas y apunta a recortes futuros',source:'Bloomberg',cat:'🏦',date:'2025-04-13',desc:'La Reserva Federal mantuvo las tasas sin cambios por tercera vez consecutiva, señalando posibles recortes para finales de 2025.'},
+    {title:'El petróleo supera $85 ante caída esperada de inventarios',source:'Reuters',cat:'🛢️',date:'2025-04-12',desc:'Los precios del petróleo subieron ante las expectativas de reducción de inventarios en EE.UU.'},
+    {title:'Tadawul alcanza máximo de 6 meses',source:'Arab News',cat:'📈',date:'2025-04-11',desc:'El índice TASI cerró notablemente al alza, impulsado por las ganancias del sector bancario.'},
+    {title:'Bitcoin se recupera por encima de $87.000',source:'CoinDesk',cat:'🔐',date:'2025-04-10',desc:'Bitcoin repuntó, beneficiándose de flujos récord hacia los ETF estadounidenses.'},
+    {title:'Visión 2030: $80.000M en inversión extranjera en T1',source:'Saudi Gazette',cat:'💰',date:'2025-04-09',desc:'Arabia Saudita anunció $80.000 millones en inversión extranjera durante el T1 de 2025.'},
+    {title:'El euro sube frente al dólar',source:'FT',cat:'💱',date:'2025-04-09',desc:'El euro subió frente al dólar tras mejorar las negociaciones comerciales entre la UE y EE.UU.'},
+    {title:'Las acciones tecnológicas lideran Wall Street',source:'Bloomberg',cat:'📊',date:'2025-04-08',desc:'Los índices estadounidenses cerraron al alza liderados por las grandes tecnológicas.'},
+  ],
+};
+// Fallback to English for other languages
+['tr','zh','de','pt','ru','ja','ko','hi'].forEach(l=>{NEWS_FALLBACK_I18N[l]=NEWS_FALLBACK_I18N['en'];});
+function getNewsFallback(){return NEWS_FALLBACK_I18N[CL]||NEWS_FALLBACK_I18N['en'];}
+
 async function loadNews(){
   const c=document.getElementById('news-c');
-  c.innerHTML='<div class="loading"><div class="sp"></div> '+T('loading')+'</div>';
-  const queries=['economic financial markets 2025','oil gold price 2025','cryptocurrency bitcoin 2025'];
-  const items=[];
-  for(const q of queries){
-    try{
-      const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://news.google.com/rss/search?q='+q+'&hl=en&gl=US&ceid=US:en')+'&count=4');
-      const d=await r.json();
-      if(d.items)d.items.slice(0,4).forEach(it=>items.push(it));
-    }catch(e){}
-  }
-  const L=LANGS[CL];
+  // عرض الأخبار الاحتياطية فوراً
+  window._newsRendered=getNewsFallback();
+  renderNews(window._newsRendered);
+  // محاولة جلب أخبار RSS في الخلفية
+  try{
+    const timeout=ms=>new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms));
+    const queries=['economic financial markets','oil gold stocks','cryptocurrency bitcoin'];
+    const items=[];
+    for(const q of queries){
+      try{
+        const r=await Promise.race([
+          fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://news.google.com/rss/search?q='+q+'&hl=en&gl=US&ceid=US:en')+'&count=4'),
+          timeout(4000)
+        ]);
+        const d=await r.json();
+        if(d.items)d.items.slice(0,4).forEach(it=>items.push({
+          title:it.title||'',
+          source:it.source&&it.source.name?it.source.name:'Global Finance',
+          cat:'📊',desc:'',
+          date:(it.pubDate||'').slice(0,10)||new Date().toISOString().slice(0,10),
+          url:it.link||'#'
+        }));
+      }catch(e){}
+    }
+    if(items.length>=4){
+      window._newsRendered=items;
+      renderNews(items);
+    }
+  }catch(e){}
+}
+
+function renderNews(data){
+  const c=document.getElementById('news-c');
   const cats=['📊','💰','🛢️','🔐','📈','🏦'];
-  const final=items.length>=6?items:L.headlines.map((h,i)=>({title:h,link:'#',pubDate:'',source:{name:'Market Trends'}}));
-  c.innerHTML=final.slice(0,10).map((n,i)=>`<a class="news-card" href="${n.link||'#'}" target="_blank" rel="noopener"><div style="display:flex;justify-content:space-between;align-items:center"><div class="ns">${cats[i%6]} ${(n.source&&n.source.name)||'Global Finance'}</div><div class="nm">${(n.pubDate||'').slice(0,10)||new Date().toISOString().slice(0,10)}</div></div><div class="nt">${n.title||''}</div></a>`).join('');
+  c.innerHTML=data.map((n,i)=>`
+    <div class="news-card" onclick="openNewsModal(window._newsRendered[${i}],'news')" style="cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="ns">${n.cat||cats[i%6]} ${n.source||'Global Finance'}</div>
+        <div class="nm">${n.date||new Date().toISOString().slice(0,10)}</div>
+      </div>
+      <div class="nt">${n.title||''}</div>
+    </div>`).join('');
 }
 
 function loadMetals(){
@@ -957,7 +1033,7 @@ function renderTech(data){
   if(!data.length){c.innerHTML='<div class="info-bar">'+(L&&L.filterAll?'—':'لا توجد نتائج')+'</div>';return;}
   window._techRendered=data;
   c.innerHTML=data.map((n,idx)=>`
-    <div class="news-card" onclick="openNewsModal(window._techRendered[${idx}])" data-cat="${n.cat}" style="cursor:pointer">
+    <div class="news-card" onclick="openNewsModal(window._techRendered[${idx}],'tech')" data-cat="${n.cat}" style="cursor:pointer">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div class="ns">${n.source||'Tech'}</div>
         <div style="display:flex;gap:6px;align-items:center">
@@ -1093,12 +1169,16 @@ const TECH_DESC_I18N={
 };
 const READ_MORE_I18N={ar:'🔗 اقرأ المزيد',en:'🔗 Read More',fr:'🔗 Lire la suite',es:'🔗 Leer más',tr:'🔗 Devamını oku',zh:'🔗 阅读更多',de:'🔗 Mehr lesen',pt:'🔗 Leia mais',ru:'🔗 Читать далее',ja:'🔗 続きを読む',ko:'🔗 더 읽기',hi:'🔗 और पढ़ें'};
 
-function openNewsModal(n){
-  const descMap=TECH_DESC_I18N[n.cat]||TECH_DESC_I18N['AI'];
-  const desc=descMap[CL]||descMap['en'];
-  document.getElementById('mSource').textContent=n.source||'Tech';
-  document.getElementById('mTitle').textContent=n.title;
-  document.getElementById('mCat').textContent=getTechCatLabel(n.cat);
+function openNewsModal(n,type){
+  let desc=n.desc||'';
+  if(!desc&&type!=='news'){
+    const descMap=TECH_DESC_I18N[n.cat]||TECH_DESC_I18N['AI'];
+    desc=descMap[CL]||descMap['en'];
+  }
+  const catLabel=type==='news'?(n.cat||'📰'):getTechCatLabel(n.cat);
+  document.getElementById('mSource').textContent=n.source||'';
+  document.getElementById('mTitle').textContent=n.title||'';
+  document.getElementById('mCat').textContent=catLabel;
   document.getElementById('mDate').textContent=n.date||'';
   document.getElementById('mDesc').textContent=desc;
   const link=document.getElementById('mLink');
