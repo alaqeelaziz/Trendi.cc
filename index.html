@@ -167,21 +167,21 @@ body.ltr .deal-card:hover{transform:translateX(2px)}
 .deal-date{font-size:10px;color:var(--text3);margin-top:6px}
 
 /* NEWS MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:16px}
 .modal-overlay.open{display:flex}
-.modal-box{background:var(--card);border:1px solid var(--border2);border-radius:14px;max-width:600px;width:100%;max-height:88vh;overflow-y:auto;animation:modalIn .22s ease}
+.modal-box{background:var(--card);border:1px solid var(--border2);border-radius:14px;max-width:580px;width:100%;max-height:88vh;overflow-y:auto;animation:modalIn .22s ease}
 @keyframes modalIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 18px 0}
 .modal-source{font-size:10px;color:var(--b4);font-weight:700;letter-spacing:.5px;margin-bottom:8px}
 .modal-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.6;flex:1}
 .modal-close{background:rgba(255,255,255,.08);border:none;color:var(--text2);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.2s}
 .modal-close:hover{background:rgba(240,64,96,.18);color:var(--red)}
-.modal-body{padding:14px 18px 18px}
+.modal-body{padding:14px 18px 20px}
 .modal-meta{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .modal-cat{background:rgba(75,191,224,.1);color:var(--sky);border:1px solid rgba(75,191,224,.2);padding:2px 9px;border-radius:4px;font-size:10px;font-weight:700}
 .modal-date{font-size:11px;color:var(--text3)}
-.modal-desc{font-size:12.5px;color:var(--text2);line-height:1.8;margin-bottom:16px}
-.modal-link{display:inline-flex;align-items:center;gap:6px;background:var(--b1);border:1px solid var(--b3);color:var(--b3);padding:8px 16px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;transition:.2s;cursor:pointer;font-family:inherit}
+.modal-desc{font-size:13px;color:var(--text2);line-height:1.85;margin-bottom:18px}
+.modal-link{display:inline-flex;align-items:center;gap:6px;background:var(--b1);border:1px solid var(--b3);color:var(--b3);padding:8px 18px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;transition:.2s;cursor:pointer;font-family:inherit}
 .modal-link:hover{background:var(--b2);color:#fff}
 </style>
 </head>
@@ -909,30 +909,40 @@ function getTechFallback(){return TECH_FALLBACK_I18N[CL]||TECH_FALLBACK_I18N['en
 let techData=[];
 
 async function loadTech(){
-  const c=document.getElementById('tech-c');
-  c.innerHTML='<div class="loading"><div class="sp"></div> جارٍ التحميل...</div>';
-  const items=[];
-  const results=await Promise.allSettled(TECH_FEEDS.map(async f=>{
-    const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(f.url)+'&count=5');
-    const d=await r.json();
-    return{feed:f,data:d};
-  }));
-  results.forEach(res=>{
-    if(res.status==='fulfilled'&&res.value.data.items){
-      res.value.data.items.forEach(it=>{
-        const t=it.title||'';
-        const cat=t.match(/AI|GPT|LLM|Gemini|Claude|artificial intelligence|machine learning/i)?'AI':
-                  t.match(/startup|funding|venture|series [A-D]|raise/i)?'startup':
-                  t.match(/hack|breach|ransomware|security|cyber|phishing|malware/i)?'security':
-                  t.match(/cloud|AWS|Azure|GCP|kubernetes|server/i)?'cloud':
-                  t.match(/iPhone|Android|phone|Samsung|pixel|tablet|wearable/i)?'mobile':'AI';
-        items.push({title:t,source:res.value.feed.name,date:(it.pubDate||'').slice(0,10),cat,url:it.link||'#'});
-      });
-    }
-  });
-  techData=items.length>=6?items:getTechFallback();
-  techData.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  // عرض البيانات الاحتياطية فوراً بدون انتظار
+  techData=getTechFallback();
   renderTech(techData);
+  // محاولة جلب RSS في الخلفية بمهلة 4 ثوانٍ
+  try{
+    const timeout=ms=>new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms));
+    const items=[];
+    const results=await Promise.allSettled(TECH_FEEDS.map(async f=>{
+      const r=await Promise.race([
+        fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(f.url)+'&count=5'),
+        timeout(4000)
+      ]);
+      const d=await r.json();
+      return{feed:f,data:d};
+    }));
+    results.forEach(res=>{
+      if(res.status==='fulfilled'&&res.value.data&&res.value.data.items){
+        res.value.data.items.forEach(it=>{
+          const t=it.title||'';
+          const cat=t.match(/AI|GPT|LLM|Gemini|Claude|artificial intelligence|machine learning/i)?'AI':
+                    t.match(/startup|funding|venture|series [A-D]|raise/i)?'startup':
+                    t.match(/hack|breach|ransomware|security|cyber|phishing|malware/i)?'security':
+                    t.match(/cloud|AWS|Azure|GCP|kubernetes|server/i)?'cloud':
+                    t.match(/iPhone|Android|phone|Samsung|pixel|tablet|wearable/i)?'mobile':'AI';
+          items.push({title:t,source:res.value.feed.name,date:(it.pubDate||'').slice(0,10),cat,url:it.link||'#'});
+        });
+      }
+    });
+    if(items.length>=6){
+      techData=items;
+      techData.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      renderTech(techData);
+    }
+  }catch(e){}// استمر بالبيانات الاحتياطية المعروضة
 }
 
 const TECH_CAT_LABELS={AI:'🤖 AI',startup:'🚀 ناشئة',security:'🔒 أمن',cloud:'☁️ سحابة',mobile:'📱 أجهزة'};
@@ -956,7 +966,7 @@ function renderTech(data){
         </div>
       </div>
       <div class="nt">${n.title}</div>
-    </div>`).join(''););
+    </div>`).join('');
 }
 
 function filterTech(cat,btn){
@@ -1043,7 +1053,7 @@ function getDeals(){return ALL_DEALS_I18N[CL]||ALL_DEALS_I18N['en'];}
 let dealsData=[];
 
 function loadDeals(){
-  dealsData=[...getDeals()];
+  dealsData=getDeals();
   renderDeals(dealsData);
 }
 
@@ -1074,18 +1084,18 @@ function filterDeals(type,btn){
 }
 
 
-// ── NEWS MODAL FUNCTIONS ────────────────────────────────────────────────────
 const TECH_DESC_I18N={
-  AI:     {ar:'مقال يتناول آخر مستجدات الذكاء الاصطناعي وتأثيره على مستقبل التقنية.', en:'An article covering the latest AI developments and their impact on the future of technology.', fr:"Un article sur les dernières avancées en IA et leur impact sur l'avenir de la technologie.", es:'Un artículo sobre los últimos avances en IA y su impacto en el futuro de la tecnología.', tr:'Yapay zekanın son gelişmelerini ve teknolojinin geleceğine etkisini ele alan bir makale.', zh:'一篇介绍人工智能最新进展及其对技术未来影响的文章。', de:'Ein Artikel über die neuesten KI-Entwicklungen und ihre Auswirkungen auf die Zukunft der Technologie.', pt:'Um artigo sobre os últimos avanços em IA e seu impacto no futuro da tecnologia.', ru:'Статья о последних разработках в области ИИ и их влиянии на будущее технологий.', ja:'AIの最新動向と技術の未来への影響を取り上げた記事。', ko:'AI의 최신 개발 동향과 기술의 미래에 미치는 영향을 다룬 기사입니다.', hi:'AI के नवीनतम विकास और प्रौद्योगिकी के भविष्य पर इसके प्रभाव को कवर करने वाला एक लेख।'},
-  mobile: {ar:'تقرير حول أحدث الأجهزة والهواتف الذكية وما تقدمه من مواصفات تقنية متطورة.', en:'A report on the latest smart devices and smartphones and their advanced technical specs.', fr:'Un rapport sur les derniers appareils et smartphones et leurs spécifications techniques avancées.', es:'Un informe sobre los últimos dispositivos inteligentes y sus especificaciones técnicas avanzadas.', tr:'En son akıllı cihazlar ve akıllı telefonlar ile gelişmiş teknik özellikleri hakkında bir rapor.', zh:'一份关于最新智能设备和智能手机及其先进技术规格的报告。', de:'Ein Bericht über die neuesten Smart Devices und Smartphones und ihre fortschrittlichen technischen Spezifikationen.', pt:'Um relatório sobre os últimos dispositivos inteligentes e smartphones e suas especificações técnicas avançadas.', ru:'Репортаж о новейших смарт-устройствах и смартфонах и их технических характеристиках.', ja:'最新のスマートデバイスやスマートフォンと高度な技術仕様に関するレポート。', ko:'최신 스마트 기기와 스마트폰 및 고급 기술 사양에 관한 보고서입니다.', hi:'नवीनतम स्मार्ट डिवाइस और स्मार्टफोन तथा उनके उन्नत तकनीकी विनिर्देशों पर एक रिपोर्ट।'},
-  cloud:  {ar:'تحليل لأحدث المستجدات في مجال الحوسبة السحابية والبنى التحتية الرقمية.', en:'An analysis of the latest developments in cloud computing and digital infrastructure.', fr:"Une analyse des dernières évolutions en matière d'informatique en nuage et d'infrastructure numérique.", es:'Un análisis de los últimos desarrollos en computación en la nube e infraestructura digital.', tr:'Bulut bilişim ve dijital altyapıdaki son gelişmelerin analizi.', zh:'对云计算和数字基础设施最新发展的分析。', de:'Eine Analyse der neuesten Entwicklungen im Cloud-Computing und in der digitalen Infrastruktur.', pt:'Uma análise dos mais recentes desenvolvimentos em computação em nuvem e infraestrutura digital.', ru:'Анализ последних тенденций в сфере облачных вычислений и цифровой инфраструктуры.', ja:'クラウドコンピューティングとデジタルインフラの最新動向の分析。', ko:'클라우드 컴퓨팅 및 디지털 인프라의 최신 개발 동향 분석입니다.', hi:'क्लाउड कंप्यूटिंग और डिजिटल बुनियादी ढांचे में नवीनतम विकास का विश्लेषण।'},
-  security:{ar:'تقرير عن أبرز التهديدات السيبرانية والثغرات الأمنية التي تستهدف المؤسسات والأفراد.', en:'A report on major cyber threats and security vulnerabilities targeting organizations and individuals.', fr:'Un rapport sur les principales cybermenaces et vulnérabilités de sécurité ciblant organisations et individus.', es:'Un informe sobre las principales amenazas cibernéticas y vulnerabilidades de seguridad.', tr:'Kuruluşları ve bireyleri hedef alan başlıca siber tehditler ve güvenlik açıklarına ilişkin rapor.', zh:'关于针对组织和个人的主要网络威胁和安全漏洞的报告。', de:'Ein Bericht über wichtige Cyber-Bedrohungen und Sicherheitslücken, die Organisationen und Einzelpersonen betreffen.', pt:'Um relatório sobre as principais ameaças cibernéticas e vulnerabilidades de segurança.', ru:'Доклад об основных киберугрозах и уязвимостях безопасности, направленных против организаций и частных лиц.', ja:'組織と個人を標的にした主要なサイバー脅威とセキュリティ脆弱性に関するレポート。', ko:'조직과 개인을 표적으로 하는 주요 사이버 위협 및 보안 취약점에 관한 보고서입니다.', hi:'संगठनों और व्यक्तियों को लक्षित करने वाले प्रमुख साइबर खतरों और सुरक्षा कमजोरियों पर एक रिपोर्ट।'},
-  startup:{ar:'تغطية لأبرز جولات تمويل الشركات الناشئة والتطورات في منظومة ريادة الأعمال التقنية.', en:'Coverage of major startup funding rounds and developments in the tech entrepreneurship ecosystem.', fr:"Couverture des principales levées de fonds de startups et des développements dans l'écosystème entrepreneurial technologique.", es:'Cobertura de las principales rondas de financiación de startups y desarrollos en el ecosistema emprendedor tecnológico.', tr:'Önemli startup finansman turları ve teknoloji girişimcilik ekosistemindeki gelişmelerin haberi.', zh:'关于主要初创公司融资轮次和科技创业生态系统发展的报道。', de:'Berichterstattung über wichtige Startup-Finanzierungsrunden und Entwicklungen im Tech-Gründerökosystem.', pt:'Cobertura das principais rodadas de financiamento de startups e desenvolvimentos no ecossistema empreendedor de tecnologia.', ru:'Освещение крупных раундов финансирования стартапов и развития технологической предпринимательской экосистемы.', ja:'主要スタートアップの資金調達ラウンドとテック起業家エコシステムの動向。', ko:'주요 스타트업 자금 조달 라운드 및 기술 창업 생태계의 발전에 관한 보도입니다.', hi:'प्रमुख स्टार्टअप फंडिंग राउंड और टेक उद्यमिता पारिस्थितिकी तंत्र में विकास की कवरेज।'},
+  AI:{ar:'مقال يتناول آخر مستجدات الذكاء الاصطناعي وتأثيره على مستقبل التقنية.',en:'An article covering the latest AI developments and their impact on the future of technology.',fr:"Un article sur les dernières avancées en IA.",es:'Un artículo sobre los últimos avances en IA.',tr:'Yapay zekanın son gelişmelerini ele alan bir makale.',zh:'介绍AI最新进展的文章。',de:'Ein Artikel über die neuesten KI-Entwicklungen.',pt:'Um artigo sobre os avanços recentes em IA.',ru:'Статья о последних разработках в области ИИ.',ja:'AIの最新動向を取り上げた記事。',ko:'AI 최신 개발 동향을 다룬 기사.',hi:'AI के नवीनतम विकास को कवर करने वाला लेख।'},
+  mobile:{ar:'تقرير حول أحدث الأجهزة والهواتف الذكية وما تقدمه من مواصفات تقنية.',en:'A report on the latest smartphones and devices with advanced technical specs.',fr:'Un rapport sur les derniers smartphones et appareils.',es:'Un informe sobre los últimos dispositivos inteligentes.',tr:'En son akıllı cihazlar hakkında bir rapor.',zh:'关于最新智能手机和设备的报告。',de:'Ein Bericht über die neuesten Smartphones.',pt:'Um relatório sobre os últimos smartphones.',ru:'Репортаж о новейших смартфонах.',ja:'最新スマートフォンに関するレポート。',ko:'최신 스마트폰 보고서.',hi:'नवीनतम स्मार्टफोन पर एक रिपोर्ट।'},
+  cloud:{ar:'تحليل لأحدث المستجدات في مجال الحوسبة السحابية.',en:'An analysis of the latest cloud computing developments.',fr:"Une analyse des dernières évolutions en cloud computing.",es:'Un análisis de los últimos desarrollos en la nube.',tr:'Bulut bilişimdeki son gelişmelerin analizi.',zh:'云计算最新发展的分析。',de:'Eine Analyse der neuesten Cloud-Entwicklungen.',pt:'Uma análise dos desenvolvimentos em nuvem.',ru:'Анализ тенденций облачных вычислений.',ja:'クラウドコンピューティングの最新動向分析。',ko:'클라우드 컴퓨팅 최신 동향 분석.',hi:'क्लाउड कंप्यूटिंग के नवीनतम विकास का विश्लेषण।'},
+  security:{ar:'تقرير عن أبرز التهديدات السيبرانية والثغرات الأمنية.',en:'A report on major cyber threats and security vulnerabilities.',fr:'Un rapport sur les principales cybermenaces.',es:'Un informe sobre las amenazas cibernéticas.',tr:'Siber tehditler hakkında rapor.',zh:'关于主要网络威胁的报告。',de:'Ein Bericht über Cyber-Bedrohungen.',pt:'Um relatório sobre ameaças cibernéticas.',ru:'Доклад о киберугрозах.',ja:'サイバー脅威に関するレポート。',ko:'사이버 보안 위협 보고서.',hi:'साइबर खतरों पर एक रिपोर्ट।'},
+  startup:{ar:'تغطية لأبرز جولات تمويل الشركات الناشئة.',en:'Coverage of major startup funding rounds and the tech entrepreneurship ecosystem.',fr:'Couverture des principales levées de fonds de startups.',es:'Cobertura de rondas de financiación de startups.',tr:'Startup finansman turlarının haberi.',zh:'关于主要初创公司融资的报道。',de:'Berichterstattung über Startup-Finanzierungsrunden.',pt:'Cobertura de rodadas de financiamento de startups.',ru:'Освещение раундов финансирования стартапов.',ja:'スタートアップ資金調達の動向。',ko:'스타트업 자금 조달 동향.',hi:'स्टार्टअप फंडिंग राउंड की कवरेज।'},
 };
 const READ_MORE_I18N={ar:'🔗 اقرأ المزيد',en:'🔗 Read More',fr:'🔗 Lire la suite',es:'🔗 Leer más',tr:'🔗 Devamını oku',zh:'🔗 阅读更多',de:'🔗 Mehr lesen',pt:'🔗 Leia mais',ru:'🔗 Читать далее',ja:'🔗 続きを読む',ko:'🔗 더 읽기',hi:'🔗 और पढ़ें'};
 
 function openNewsModal(n){
-  const desc=(TECH_DESC_I18N[n.cat]||TECH_DESC_I18N['AI'])[CL]||(TECH_DESC_I18N[n.cat]||TECH_DESC_I18N['AI'])['en'];
+  const descMap=TECH_DESC_I18N[n.cat]||TECH_DESC_I18N['AI'];
+  const desc=descMap[CL]||descMap['en'];
   document.getElementById('mSource').textContent=n.source||'Tech';
   document.getElementById('mTitle').textContent=n.title;
   document.getElementById('mCat').textContent=getTechCatLabel(n.cat);
@@ -1130,6 +1140,5 @@ loadTech();
     </div>
   </div>
 </div>
-
 </body>
 </html>
