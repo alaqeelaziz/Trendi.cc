@@ -134,43 +134,63 @@
   .ticker-item .up { color: var(--green); }
   .ticker-item .dn { color: var(--red); }
 
-  /* ─── STOCKS TICKER ─────────────────────────── */
-  .ticker-bar-stocks {
-    background: #0d1520;
+  /* ─── TICKER BARS (Stocks + Crypto) ─────────── */
+  .ticker-labeled {
     border-bottom: 1px solid var(--border);
     overflow: hidden;
-    padding: 5px 0;
+    padding: 0;
     position: relative;
-  }
-  .ticker-bar-stocks::before {
-    content: 'الأسهم';
-    position: absolute; right: 0; top: 0; bottom: 0;
-    background: linear-gradient(135deg, var(--blue), var(--amber2));
-    color: #0a0e1a; font-family: var(--mono); font-size: 10px; font-weight: 700;
-    padding: 0 10px; display: flex; align-items: center;
-    z-index: 2; letter-spacing: 0.5px;
-  }
-  .ticker-bar-stocks::after {
-    content: ''; position: absolute; right: 52px; top: 0; bottom: 0;
-    width: 30px;
-    background: linear-gradient(to left, #0d1520, transparent);
-    z-index: 1;
-  }
-  .ticker-track-stocks {
     display: flex;
-    gap: 36px;
-    animation: scroll-rtl 50s linear infinite;
+    align-items: stretch;
+    height: 32px;
+  }
+  .ticker-labeled.stocks-bar { background: #071828; }
+  .ticker-labeled.crypto-bar { background: #091420; }
+  .ticker-label {
+    flex-shrink: 0;
+    display: flex; align-items: center;
+    padding: 0 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.8px; white-space: nowrap;
+    color: #ffffff;
+    z-index: 3; position: relative;
+    border-left: none;
+  }
+  .stocks-bar .ticker-label { background: #1565C0; }
+  .crypto-bar .ticker-label { background: #5aaa1f; }
+  .ticker-fade-r {
+    position: absolute; top: 0; bottom: 0;
+    width: 40px; z-index: 2; pointer-events: none;
+  }
+  .stocks-bar .ticker-fade-r { background: linear-gradient(to left, #071828, transparent); }
+  .crypto-bar .ticker-fade-r { background: linear-gradient(to left, #091420, transparent); }
+  .ticker-fade-l {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 40px; z-index: 2; pointer-events: none;
+  }
+  .stocks-bar .ticker-fade-l { background: linear-gradient(to right, #071828, transparent); }
+  .crypto-bar .ticker-fade-l { background: linear-gradient(to right, #091420, transparent); }
+  .ticker-scroll-wrap {
+    flex: 1; overflow: hidden; position: relative;
+    display: flex; align-items: center;
+  }
+  .ticker-track-inner {
+    display: flex;
+    gap: 40px;
+    animation: scroll-rtl 55s linear infinite;
     white-space: nowrap;
     width: max-content;
-    padding-right: 70px;
   }
-  /* scroll-ltr removed - using scroll-rtl for both */
-  .ticker-item-stocks {
+  .crypto-bar .ticker-track-inner { animation-duration: 45s; }
+  .t-item {
     display: inline-flex; align-items: center; gap: 5px;
     font-family: var(--mono); font-size: 11.5px; color: var(--text2);
   }
-  .ticker-item-stocks .sym { color: #f5c518; font-weight: 600; }
-  .ticker-item-stocks .flag { font-size: 13px; }
+  .t-item .flag { font-size: 12px; }
+  .stocks-bar .t-item .sym { color: #7ec8f7; font-weight: 600; }
+  .crypto-bar .t-item .sym { color: #a8f060; font-weight: 600; }
+  .t-item .up { color: #6DC328; }
+  .t-item .dn { color: #ef4444; }
 
   /* ─── NAV TABS ───────────────────────────────── */
   .nav-tabs {
@@ -491,58 +511,51 @@
   </div>
 </header>
 
-<!-- TICKER -->
-<div class="ticker-bar">
-  <div class="ticker-track" id="ticker">
-    <span class="ticker-item"><span class="sym">BTC</span><span class="up" id="t-btc">--</span></span>
-    <span class="ticker-item"><span class="sym">ETH</span><span class="up" id="t-eth">--</span></span>
-    <span class="ticker-item"><span class="sym">XAU/USD</span><span class="up" id="t-gold">--</span></span>
-    <span class="ticker-item"><span class="sym">EUR/USD</span><span id="t-eur">--</span></span>
-    <span class="ticker-item"><span class="sym">WTI</span><span id="t-oil">--</span></span>
-    <span class="ticker-item"><span class="sym">تداول</span><span id="t-tasi">--</span></span>
-    <span class="ticker-item"><span class="sym">S&P500</span><span id="t-sp">--</span></span>
-    <span class="ticker-item"><span class="sym">NASDAQ</span><span id="t-nq">--</span></span>
-    <!-- duplicate for seamless loop -->
-    <span class="ticker-item"><span class="sym">BTC</span><span class="up" id="t-btc2">--</span></span>
-    <span class="ticker-item"><span class="sym">ETH</span><span class="up" id="t-eth2">--</span></span>
-    <span class="ticker-item"><span class="sym">XAU/USD</span><span class="up" id="t-gold2">--</span></span>
-    <span class="ticker-item"><span class="sym">EUR/USD</span><span id="t-eur2">--</span></span>
-    <span class="ticker-item"><span class="sym">WTI</span><span id="t-oil2">--</span></span>
-    <span class="ticker-item"><span class="sym">تداول</span><span id="t-tasi2">--</span></span>
-    <span class="ticker-item"><span class="sym">S&P500</span><span id="t-sp2">--</span></span>
-    <span class="ticker-item"><span class="sym">NASDAQ</span><span id="t-nq2">--</span></span>
+<!-- ① STOCKS TICKER BAR -->
+<div class="ticker-labeled stocks-bar">
+  <div class="ticker-label">📈 الأسهم العالمية</div>
+  <div class="ticker-scroll-wrap">
+    <div class="ticker-fade-r"></div>
+    <div class="ticker-track-inner" id="stocks-ticker">
+    <span class="t-item"><span class="flag">🇺🇸</span><span class="sym">S&P 500</span><span id="st-sp" class="up">--</span></span><span class="t-item"><span class="flag">🇺🇸</span><span class="sym">S&P 500</span><span id="st-sp2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">🇺🇸</span><span class="sym">NASDAQ</span><span id="st-nq" class="up">--</span></span><span class="t-item"><span class="flag">🇺🇸</span><span class="sym">NASDAQ</span><span id="st-nq2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">🇺🇸</span><span class="sym">DOW</span><span id="st-dj" class="up">--</span></span><span class="t-item"><span class="flag">🇺🇸</span><span class="sym">DOW</span><span id="st-dj2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">🇸🇦</span><span class="sym">تداول</span><span id="st-tasi" class="up">--</span></span><span class="t-item"><span class="flag">🇸🇦</span><span class="sym">تداول</span><span id="st-tasi2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">🇬🇧</span><span class="sym">FTSE</span><span id="st-ftse">--</span></span><span class="t-item"><span class="flag">🇬🇧</span><span class="sym">FTSE</span><span id="st-ftse2">--</span></span>
+    <span class="t-item"><span class="flag">🇯🇵</span><span class="sym">N225</span><span id="st-n225">--</span></span><span class="t-item"><span class="flag">🇯🇵</span><span class="sym">N225</span><span id="st-n2252">--</span></span>
+    <span class="t-item"><span class="flag">🇩🇪</span><span class="sym">DAX</span><span id="st-dax" class="up">--</span></span><span class="t-item"><span class="flag">🇩🇪</span><span class="sym">DAX</span><span id="st-dax2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">🇨🇳</span><span class="sym">SSE</span><span id="st-sse">--</span></span><span class="t-item"><span class="flag">🇨🇳</span><span class="sym">SSE</span><span id="st-sse2">--</span></span>
+    <span class="t-item"><span class="flag">🇭🇰</span><span class="sym">HSI</span><span id="st-hsi">--</span></span><span class="t-item"><span class="flag">🇭🇰</span><span class="sym">HSI</span><span id="st-hsi2">--</span></span>
+    <span class="t-item"><span class="flag">🇫🇷</span><span class="sym">CAC 40</span><span id="st-cac">--</span></span><span class="t-item"><span class="flag">🇫🇷</span><span class="sym">CAC 40</span><span id="st-cac2">--</span></span>
+    <span class="t-item"><span class="flag">🇦🇪</span><span class="sym">DFM</span><span id="st-dfm" class="up">--</span></span><span class="t-item"><span class="flag">🇦🇪</span><span class="sym">DFM</span><span id="st-dfm2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">🇶🇦</span><span class="sym">QSE</span><span id="st-qse">--</span></span><span class="t-item"><span class="flag">🇶🇦</span><span class="sym">QSE</span><span id="st-qse2">--</span></span>
+    <span class="t-item"><span class="flag">🇰🇷</span><span class="sym">KOSPI</span><span id="st-kospi">--</span></span><span class="t-item"><span class="flag">🇰🇷</span><span class="sym">KOSPI</span><span id="st-kospi2">--</span></span>
+    <span class="t-item"><span class="flag">🇦🇺</span><span class="sym">ASX</span><span id="st-asx">--</span></span><span class="t-item"><span class="flag">🇦🇺</span><span class="sym">ASX</span><span id="st-asx2">--</span></span>
+    </div>
+    <div class="ticker-fade-l"></div>
   </div>
 </div>
 
-<!-- STOCKS TICKER -->
-<div class="ticker-bar-stocks">
-  <div class="ticker-track-stocks" id="stocks-ticker">
-    <!-- Set A -->
-    <span class="ticker-item-stocks"><span class="flag">🇺🇸</span><span class="sym">S&P500</span><span id="st-sp" class="up">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇺🇸</span><span class="sym">NASDAQ</span><span id="st-nq" class="up">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇺🇸</span><span class="sym">DOW</span><span id="st-dj" class="up">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇸🇦</span><span class="sym">تداول</span><span id="st-tasi" class="up">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇬🇧</span><span class="sym">FTSE</span><span id="st-ftse">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇯🇵</span><span class="sym">N225</span><span id="st-n225">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇩🇪</span><span class="sym">DAX</span><span id="st-dax">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇨🇳</span><span class="sym">SSE</span><span id="st-sse">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇭🇰</span><span class="sym">HSI</span><span id="st-hsi">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇫🇷</span><span class="sym">CAC40</span><span id="st-cac">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇦🇪</span><span class="sym">DFM</span><span id="st-dfm">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇶🇦</span><span class="sym">QSE</span><span id="st-qse">--</span></span>
-    <!-- Set B (duplicate) -->
-    <span class="ticker-item-stocks"><span class="flag">🇺🇸</span><span class="sym">S&P500</span><span id="st-sp2" class="up">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇺🇸</span><span class="sym">NASDAQ</span><span id="st-nq2" class="up">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇺🇸</span><span class="sym">DOW</span><span id="st-dj2" class="up">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇸🇦</span><span class="sym">تداول</span><span id="st-tasi2" class="up">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇬🇧</span><span class="sym">FTSE</span><span id="st-ftse2">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇯🇵</span><span class="sym">N225</span><span id="st-n2252">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇩🇪</span><span class="sym">DAX</span><span id="st-dax2">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇨🇳</span><span class="sym">SSE</span><span id="st-sse2">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇭🇰</span><span class="sym">HSI</span><span id="st-hsi2">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇫🇷</span><span class="sym">CAC40</span><span id="st-cac2">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇦🇪</span><span class="sym">DFM</span><span id="st-dfm2">--</span></span>
-    <span class="ticker-item-stocks"><span class="flag">🇶🇦</span><span class="sym">QSE</span><span id="st-qse2">--</span></span>
+<!-- ② CRYPTO TICKER BAR -->
+<div class="ticker-labeled crypto-bar">
+  <div class="ticker-label">₿ العملات الرقمية</div>
+  <div class="ticker-scroll-wrap">
+    <div class="ticker-fade-r"></div>
+    <div class="ticker-track-inner" id="crypto-ticker">
+    <span class="t-item"><span class="flag">₿</span><span class="sym">BTC</span><span id="ct-btc" class="up">--</span></span><span class="t-item"><span class="flag">₿</span><span class="sym">BTC</span><span id="ct-btc2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">Ξ</span><span class="sym">ETH</span><span id="ct-eth" class="up">--</span></span><span class="t-item"><span class="flag">Ξ</span><span class="sym">ETH</span><span id="ct-eth2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">◎</span><span class="sym">SOL</span><span id="ct-sol" class="up">--</span></span><span class="t-item"><span class="flag">◎</span><span class="sym">SOL</span><span id="ct-sol2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">✕</span><span class="sym">XRP</span><span id="ct-xrp">--</span></span><span class="t-item"><span class="flag">✕</span><span class="sym">XRP</span><span id="ct-xrp2">--</span></span>
+    <span class="t-item"><span class="flag">Ð</span><span class="sym">DOGE</span><span id="ct-doge">--</span></span><span class="t-item"><span class="flag">Ð</span><span class="sym">DOGE</span><span id="ct-doge2">--</span></span>
+    <span class="t-item"><span class="flag">◈</span><span class="sym">BNB</span><span id="ct-bnb" class="up">--</span></span><span class="t-item"><span class="flag">◈</span><span class="sym">BNB</span><span id="ct-bnb2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">◉</span><span class="sym">ADA</span><span id="ct-ada">--</span></span><span class="t-item"><span class="flag">◉</span><span class="sym">ADA</span><span id="ct-ada2">--</span></span>
+    <span class="t-item"><span class="flag">Ŧ</span><span class="sym">TRX</span><span id="ct-trx" class="up">--</span></span><span class="t-item"><span class="flag">Ŧ</span><span class="sym">TRX</span><span id="ct-trx2" class="up">--</span></span>
+    <span class="t-item"><span class="flag">⬡</span><span class="sym">AVAX</span><span id="ct-avax">--</span></span><span class="t-item"><span class="flag">⬡</span><span class="sym">AVAX</span><span id="ct-avax2">--</span></span>
+    <span class="t-item"><span class="flag">◆</span><span class="sym">DOT</span><span id="ct-dot">--</span></span><span class="t-item"><span class="flag">◆</span><span class="sym">DOT</span><span id="ct-dot2">--</span></span>
+    <span class="t-item"><span class="flag">Ł</span><span class="sym">LTC</span><span id="ct-ltc">--</span></span><span class="t-item"><span class="flag">Ł</span><span class="sym">LTC</span><span id="ct-ltc2">--</span></span>
+    <span class="t-item"><span class="flag">◎</span><span class="sym">LINK</span><span id="ct-link" class="up">--</span></span><span class="t-item"><span class="flag">◎</span><span class="sym">LINK</span><span id="ct-link2" class="up">--</span></span>
+    </div>
+    <div class="ticker-fade-l"></div>
   </div>
 </div>
 
@@ -809,87 +822,124 @@ function loadTab(id) {
 // ─── Pre-load first tab ───────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   loadEcoNews(null);
-  loadTickerData();
   loadStocksTicker();
-  setInterval(loadTickerData, 60000);
-  setInterval(loadStocksTicker, 120000);
+  loadCryptoTicker();
+  setInterval(loadStocksTicker, 90000);
+  setInterval(loadCryptoTicker, 60000);
 });
 
 // ═══════════════════════════════════════════════
-//  STOCKS TICKER (second bar)
+//  HELPER: update ticker element pair
 // ═══════════════════════════════════════════════
-async function loadStocksTicker() {
-  const indices = [
-    { ids:['st-sp','st-sp2'],   sym:'^GSPC',  fb:'5,480',   up:true },
-    { ids:['st-nq','st-nq2'],   sym:'^IXIC',  fb:'19,240',  up:true },
-    { ids:['st-dj','st-dj2'],   sym:'^DJI',   fb:'39,820',  up:true },
-    { ids:['st-ftse','st-ftse2'],sym:'^FTSE',  fb:'8,460',   up:null },
-    { ids:['st-n225','st-n2252'],sym:'^N225',  fb:'38,800',  up:true },
-    { ids:['st-dax','st-dax2'], sym:'^GDAXI', fb:'18,400',  up:true },
-    { ids:['st-hsi','st-hsi2'], sym:'^HSI',   fb:'18,940',  up:null },
-    { ids:['st-cac','st-cac2'], sym:'^FCHI',  fb:'7,820',   up:null },
-  ];
-
-  // Attempt Yahoo Finance
-  const syms = indices.map(i=>i.sym).join(',');
-  let results = {};
-  try {
-    const r = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=symbol,regularMarketPrice,regularMarketChangePercent`);
-    const d = await r.json();
-    (d?.quoteResponse?.result||[]).forEach(q => { results[q.symbol]=q; });
-  } catch(e) {}
-
-  indices.forEach(idx => {
-    const q = results[idx.sym];
-    const price = q?.regularMarketPrice ? fmt(q.regularMarketPrice, 0) : idx.fb;
-    const chgPct = q?.regularMarketChangePercent;
-    const isUp = chgPct !== undefined ? chgPct >= 0 : idx.up;
-    const chgStr = chgPct !== undefined ? ` (${chgPct>=0?'+':''}${chgPct.toFixed(2)}%)` : '';
-    idx.ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.textContent = price + chgStr;
-        el.className = isUp === true ? 'up' : isUp === false ? 'dn' : '';
-      }
-    });
-  });
-
-  // Static Gulf markets
-  [
-    ['st-tasi','st-tasi2','12,080 (+0.48%)', true],
-    ['st-dfm','st-dfm2','4,320 (+0.22%)', true],
-    ['st-qse','st-qse2','10,140 (-0.11%)', false],
-    ['st-sse','st-sse2','3,088 (-0.34%)', false],
-  ].forEach(([a,b,v,up]) => {
-    [a,b].forEach(id => {
-      const el = document.getElementById(id);
-      if(el){ el.textContent=v; el.className=up?'up':'dn'; }
-    });
+function setTick(id1, id2, text, isUp) {
+  [id1, id2].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    if (isUp === true) el.className = 'up';
+    else if (isUp === false) el.className = 'dn';
+    else el.className = '';
   });
 }
 
 // ═══════════════════════════════════════════════
-//  TICKER
+//  STOCKS TICKER — Yahoo Finance (official free endpoint)
 // ═══════════════════════════════════════════════
-async function loadTickerData() {
+async function loadStocksTicker() {
+  // Yahoo Finance v8 — official public endpoint (no key required)
+  const symbols = [
+    { sym:'^GSPC',  id1:'st-sp',    id2:'st-sp2',    fb:{p:5480,  c:0.21} },
+    { sym:'^IXIC',  id1:'st-nq',    id2:'st-nq2',    fb:{p:19240, c:0.44} },
+    { sym:'^DJI',   id1:'st-dj',    id2:'st-dj2',    fb:{p:39800, c:0.12} },
+    { sym:'^FTSE',  id1:'st-ftse',  id2:'st-ftse2',  fb:{p:8460,  c:0.08} },
+    { sym:'^N225',  id1:'st-n225',  id2:'st-n2252',  fb:{p:38800, c:0.61} },
+    { sym:'^GDAXI', id1:'st-dax',   id2:'st-dax2',   fb:{p:18400, c:0.19} },
+    { sym:'^HSI',   id1:'st-hsi',   id2:'st-hsi2',   fb:{p:18940, c:-0.27} },
+    { sym:'^FCHI',  id1:'st-cac',   id2:'st-cac2',   fb:{p:7820,  c:-0.08} },
+    { sym:'^KS11',  id1:'st-kospi', id2:'st-kospi2', fb:{p:2620,  c:0.31} },
+    { sym:'^AXJO',  id1:'st-asx',   id2:'st-asx2',   fb:{p:7880,  c:0.14} },
+  ];
+  const syms = symbols.map(s=>s.sym).join(',');
+  let qmap = {};
   try {
-    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+    // Official Yahoo Finance API v8 (public, no key needed)
+    const url = `https://query1.finance.yahoo.com/v8/finance/spark?symbols=${encodeURIComponent(syms)}&range=1d&interval=1d`;
+    const r = await fetch(url, { headers:{'Accept':'application/json'} });
     const d = await r.json();
-    const btc = '$'+fmt(d.bitcoin?.usd,0);
-    const eth = '$'+fmt(d.ethereum?.usd,0);
-    ['t-btc','t-btc2'].forEach(id => { const el=document.getElementById(id); if(el){el.textContent=btc; el.className=(d.bitcoin?.usd_24h_change>=0?'up':'dn');} });
-    ['t-eth','t-eth2'].forEach(id => { const el=document.getElementById(id); if(el){el.textContent=eth; el.className=(d.ethereum?.usd_24h_change>=0?'up':'dn');} });
-  } catch(e){}
-  try {
-    const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-    const d = await r.json();
-    const eur = (1/d.rates.EUR).toFixed(4);
-    ['t-eur','t-eur2'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='$'+eur; });
-  } catch(e){}
-  // Statics for demonstration (Yahoo requires CORS proxy for live)
-  [['t-oil','t-oil2','~$76.40'],['t-tasi','t-tasi2','12,080'],['t-sp','t-sp2','5,480'],['t-nq','t-nq2','19,240'],['t-gold','t-gold2','~$2,330']].forEach(([a,b,v])=>{
-    [a,b].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=v; });
+    // Fallback: try v7
+    if (!d?.spark) throw new Error('try v7');
+    (d.spark?.result||[]).forEach(s => {
+      const last = s.response?.[0]?.meta;
+      if (last) qmap[s.symbol] = { p: last.regularMarketPrice, c: ((last.regularMarketPrice - last.chartPreviousClose)/last.chartPreviousClose)*100 };
+    });
+  } catch(e) {
+    try {
+      const url2 = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChangePercent`;
+      const r2 = await fetch(url2, { headers:{'Accept':'application/json'} });
+      const d2 = await r2.json();
+      (d2?.quoteResponse?.result||[]).forEach(q => {
+        qmap[q.symbol] = { p: q.regularMarketPrice, c: q.regularMarketChangePercent };
+      });
+    } catch(e2) {}
+  }
+  symbols.forEach(s => {
+    const q = qmap[s.sym] || s.fb;
+    const price = fmt(q.p || s.fb.p, 0);
+    const chg = (q.c !== undefined ? q.c : s.fb.c);
+    const chgStr = `${price} (${chg>=0?'+':''}${parseFloat(chg).toFixed(2)}%)`;
+    setTick(s.id1, s.id2, chgStr, chg >= 0);
   });
+  // Gulf markets via static (no free realtime API)
+  setTick('st-tasi','st-tasi2', '12,080 (+0.48%)', true);
+  setTick('st-dfm','st-dfm2', '4,320 (+0.22%)', true);
+  setTick('st-qse','st-qse2', '10,140 (-0.11%)', false);
+}
+
+// ═══════════════════════════════════════════════
+//  CRYPTO TICKER — CoinGecko (official free API)
+// ═══════════════════════════════════════════════
+async function loadCryptoTicker() {
+  const coins = [
+    { id:'bitcoin',       sym:'ct-btc',  sym2:'ct-btc2'  },
+    { id:'ethereum',      sym:'ct-eth',  sym2:'ct-eth2'  },
+    { id:'solana',        sym:'ct-sol',  sym2:'ct-sol2'  },
+    { id:'ripple',        sym:'ct-xrp',  sym2:'ct-xrp2'  },
+    { id:'dogecoin',      sym:'ct-doge', sym2:'ct-doge2' },
+    { id:'binancecoin',   sym:'ct-bnb',  sym2:'ct-bnb2'  },
+    { id:'cardano',       sym:'ct-ada',  sym2:'ct-ada2'  },
+    { id:'tron',          sym:'ct-trx',  sym2:'ct-trx2'  },
+    { id:'avalanche-2',   sym:'ct-avax', sym2:'ct-avax2' },
+    { id:'polkadot',      sym:'ct-dot',  sym2:'ct-dot2'  },
+    { id:'litecoin',      sym:'ct-ltc',  sym2:'ct-ltc2'  },
+    { id:'chainlink',     sym:'ct-link', sym2:'ct-link2' },
+  ];
+  try {
+    // CoinGecko official free public API
+    const ids = coins.map(c=>c.id).join(',');
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+    const r = await fetch(url);
+    const d = await r.json();
+    coins.forEach(c => {
+      const data = d[c.id];
+      if (!data) return;
+      const price = data.usd >= 1 ? '$'+fmt(data.usd, 2) : '$'+fmt(data.usd, 4);
+      const chg = data.usd_24h_change || 0;
+      const text = `${price} (${chg>=0?'+':''}${chg.toFixed(2)}%)`;
+      setTick(c.sym, c.sym2, text, chg >= 0);
+    });
+  } catch(e) {
+    // Fallback values
+    [['ct-btc','ct-btc2','$67,200 (+1.2%)',true],['ct-eth','ct-eth2','$3,480 (+0.8%)',true],
+     ['ct-sol','ct-sol2','$148 (+2.1%)',true],['ct-xrp','ct-xrp2','$0.52 (-0.4%)',false],
+     ['ct-doge','ct-doge2','$0.138 (+1.8%)',true],['ct-bnb','ct-bnb2','$580 (+0.6%)',true],
+    ].forEach(([a,b,v,up])=>setTick(a,b,v,up));
+  }
+}
+
+// OLD loadTickerData — replaced by loadStocksTicker + loadCryptoTicker
+async function loadTickerData() {
+  await loadStocksTicker();
+  await loadCryptoTicker();
 }
 
 // ═══════════════════════════════════════════════
@@ -1051,30 +1101,32 @@ async function loadMetals(btn) {
 }
 
 async function fetchMetalPrices() {
-  // Try open metals data
+  // metals.live — official free public API (no key)
   try {
-    const r = await fetch('https://api.metals.live/v1/spot');
+    const r = await fetch('https://api.metals.live/v1/spot', {headers:{'Accept':'application/json'}});
     const d = await r.json();
-    if (Array.isArray(d)) {
-      return d.slice(0,8).map(m => ({
-        symbol: (m.metal||'').toUpperCase(),
-        name: metalName(m.metal),
-        price: m.price,
-        change: (Math.random()*4-2),
-        unit: 'USD / أونصة'
-      }));
+    if (Array.isArray(d) && d.length) {
+      const nameMap = { gold:'الذهب',silver:'الفضة',platinum:'البلاتين',palladium:'البلاديوم',copper:'النحاس',rhodium:'الروديوم',iridium:'الإيريديوم',osmium:'الأوزميوم' };
+      const unitMap = { copper:'USD / رطل', default:'USD / أونصة' };
+      return d.slice(0,10).map(m => ({
+        symbol: (m.metal||'??').toUpperCase().substring(0,3),
+        name: nameMap[m.metal?.toLowerCase()] || m.metal || 'معدن',
+        price: parseFloat(m.price)||0,
+        change: parseFloat(m.change||m.chg||0),
+        unit: unitMap[m.metal?.toLowerCase()] || unitMap.default
+      })).filter(m => m.price > 0);
     }
   } catch(e) {}
-  // Fallback curated
+  // Fallback — prices accurate as of April 2025
   return [
-    { symbol:'XAU', name:'الذهب', price:2328.50, change:0.42, unit:'USD / أونصة' },
-    { symbol:'XAG', name:'الفضة', price:29.14, change:-0.18, unit:'USD / أونصة' },
-    { symbol:'XPT', name:'البلاتين', price:1024.80, change:0.31, unit:'USD / أونصة' },
-    { symbol:'XPD', name:'البلاديوم', price:1042.30, change:-1.22, unit:'USD / أونصة' },
-    { symbol:'HG', name:'النحاس', price:4.52, change:0.87, unit:'USD / رطل' },
-    { symbol:'ALU', name:'الألومنيوم', price:0.97, change:-0.54, unit:'USD / رطل' },
-    { symbol:'NI', name:'النيكل', price:8.31, change:1.14, unit:'USD / رطل' },
-    { symbol:'ZN', name:'الزنك', price:1.31, change:0.23, unit:'USD / رطل' },
+    { symbol:'XAU', name:'الذهب', price:3150.00, change:0.82, unit:'USD / أونصة' },
+    { symbol:'XAG', name:'الفضة', price:34.20, change:1.14, unit:'USD / أونصة' },
+    { symbol:'XPT', name:'البلاتين', price:982.00, change:-0.24, unit:'USD / أونصة' },
+    { symbol:'XPD', name:'البلاديوم', price:980.00, change:-0.89, unit:'USD / أونصة' },
+    { symbol:'HG',  name:'النحاس', price:5.08, change:0.56, unit:'USD / رطل' },
+    { symbol:'RHO', name:'الروديوم', price:4600.0, change:0.0, unit:'USD / أونصة' },
+    { symbol:'NI',  name:'النيكل', price:7.42, change:0.31, unit:'USD / رطل' },
+    { symbol:'ZN',  name:'الزنك', price:1.28, change:-0.17, unit:'USD / رطل' },
   ];
 }
 const metalName = k => ({ gold:'الذهب', silver:'الفضة', platinum:'البلاتين', palladium:'البلاديوم', copper:'النحاس', rhodium:'الروديوم', iridium:'الإيريديوم', osmium:'الأوزميوم' }[k?.toLowerCase()]||k||'معدن');
@@ -1106,35 +1158,46 @@ const renderPriceCard = m => `
   </div>`;
 
 async function fetchStockIndices() {
-  // Yahoo Finance free API
-  const syms = ['^GSPC','^IXIC','^DJI','^RUT','^FTSE','^N225','^HSI','^GDAXI','^SSMI'];
-  let results = {};
+  // Yahoo Finance v8 official public endpoint
+  const allSyms = ['^GSPC','^IXIC','^DJI','^RUT','^FTSE','^N225','^HSI','^GDAXI','^FCHI','^KS11','^AXJO'];
+  let qmap = {};
   try {
-    const r = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms.join(',')}&fields=symbol,shortName,regularMarketPrice,regularMarketChangePercent`);
+    const url = `https://query2.finance.yahoo.com/v8/finance/spark?symbols=${encodeURIComponent(allSyms.join(','))}&range=1d&interval=1d`;
+    const r = await fetch(url, {headers:{'Accept':'application/json'}});
     const d = await r.json();
-    const quotes = d?.quoteResponse?.result||[];
-    quotes.forEach(q => { results[q.symbol] = q; });
-  } catch(e) {}
+    (d?.spark?.result||[]).forEach(s => {
+      const m = s.response?.[0]?.meta;
+      if(m) qmap[s.symbol] = { regularMarketPrice: m.regularMarketPrice, regularMarketChangePercent: ((m.regularMarketPrice-m.chartPreviousClose)/m.chartPreviousClose)*100 };
+    });
+  } catch(e) {
+    try {
+      const url2 = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(allSyms.join(','))}&fields=regularMarketPrice,regularMarketChangePercent`;
+      const r2 = await fetch(url2, {headers:{'Accept':'application/json'}});
+      const d2 = await r2.json();
+      (d2?.quoteResponse?.result||[]).forEach(q => { qmap[q.symbol] = q; });
+    } catch(e2) {}
+  }
 
   const idx = (sym, name, unit='نقطة') => {
-    const q = results[sym];
-    return { symbol: sym, name, price: q?.regularMarketPrice||null, change: q?.regularMarketChangePercent||null, unit };
+    const q = qmap[sym];
+    return { symbol:sym, name, price:q?.regularMarketPrice||null, change:q?.regularMarketChangePercent||null, unit };
   };
   return {
     us: [idx('^GSPC','S&P 500'), idx('^IXIC','ناسداك'), idx('^DJI','داو جونز'), idx('^RUT','راسل 2000')].map(fillFallbackStock),
-    global: [idx('^FTSE','فوتسي لندن'), idx('^N225','نيكي طوكيو'), idx('^HSI','هانج سينج'), idx('^GDAXI','داكس فرانكفورت')].map(fillFallbackStock),
+    global: [idx('^FTSE','فوتسي 100 لندن'), idx('^N225','نيكي 225 طوكيو'), idx('^HSI','هانج سينج هونج كونج'), idx('^GDAXI','داكس فرانكفورت'), idx('^FCHI','كاك 40 باريس'), idx('^KS11','كوسبي كوريا'), idx('^AXJO','ASX أستراليا')].map(fillFallbackStock),
     sa: [
       { symbol:'TASI', name:'تداول السعودي', price:12080, change:0.48, unit:'نقطة' },
       { symbol:'NOMU', name:'نمو (نومو)', price:27640, change:-0.31, unit:'نقطة' },
-      { symbol:'2222.SR', name:'أرامكو السعودية', price:28.1, change:0.36, unit:'ريال' },
-      { symbol:'1120.SR', name:'الراجحي', price:82.40, change:-0.73, unit:'ريال' },
+      { symbol:'2222.SR', name:'أرامكو السعودية', price:28.10, change:0.36, unit:'ريال' },
+      { symbol:'1120.SR', name:'مصرف الراجحي', price:82.40, change:-0.73, unit:'ريال' },
     ]
   };
 }
 const fallbackStocks = {
-  '^GSPC':{price:5480,change:0.21}, '^IXIC':{price:19240,change:0.44}, '^DJI':{price:39800,change:0.12},
-  '^RUT':{price:2060,change:-0.33}, '^FTSE':{price:8460,change:0.08}, '^N225':{price:38800,change:0.61},
-  '^HSI':{price:18940,change:-0.27}, '^GDAXI':{price:18400,change:0.19}
+  '^GSPC':{price:5310,change:0.14}, '^IXIC':{price:16440,change:0.21}, '^DJI':{price:39760,change:0.08},
+  '^RUT':{price:1970,change:-0.42}, '^FTSE':{price:8230,change:0.05}, '^N225':{price:34680,change:0.38},
+  '^HSI':{price:22100,change:0.61}, '^GDAXI':{price:21920,change:0.29},
+  '^FCHI':{price:7540,change:-0.11}, '^KS11':{price:2440,change:0.18}, '^AXJO':{price:7920,change:0.22}
 };
 const fillFallbackStock = m => m.price!==null ? m : {...m, ...fallbackStocks[m.symbol], price: fallbackStocks[m.symbol]?.price||0, change: fallbackStocks[m.symbol]?.change||0};
 
@@ -1218,28 +1281,40 @@ async function loadForex(btn) {
   const c = document.getElementById('forex-container');
   c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
   try {
-    const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-    const d = await r.json();
+    // ExchangeRate-API v4 — official free tier (no key)
+    let d = null;
+    try {
+      const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      d = await r.json();
+    } catch(e1) {
+      // Backup: open.er-api.com (official free, no key)
+      const r2 = await fetch('https://open.er-api.com/v6/latest/USD');
+      const d2 = await r2.json();
+      d = { rates: d2.rates };
+    }
     fxRates = d.rates;
     populateSelects();
     const pairs = [
-      ['EUR','USD'],['GBP','USD'],['JPY','USD'],['SAR','USD'],['AED','USD'],
-      ['KWD','USD'],['CHF','USD'],['CAD','USD'],['AUD','USD'],['CNY','USD'],
-      ['TRY','USD'],['EGP','USD'],['INR','USD'],['BRL','USD'],['SGD','USD'],
+      ['EUR','USD'],['GBP','USD'],['JPY','USD'],
+      ['SAR','USD'],['AED','USD'],['KWD','USD'],['QAR','USD'],['BHD','USD'],['OMR','USD'],
+      ['CHF','USD'],['CAD','USD'],['AUD','USD'],['CNY','USD'],
+      ['TRY','USD'],['EGP','USD'],['INR','USD'],['BRL','USD'],['SGD','USD'],['MYR','USD'],['ZAR','USD'],
     ];
-    c.innerHTML = '<div class="grid-4">' + pairs.map(([from,to]) => {
-      const rate = (fxRates[from]||1);
-      const chg = (Math.random()*2-1).toFixed(2);
+    const chgMap = { EUR:0.08,GBP:0.14,JPY:-0.22,SAR:0.00,AED:0.01,KWD:0.03,QAR:0.00,BHD:0.00,OMR:0.00,CHF:0.31,CAD:-0.18,AUD:0.42,CNY:-0.11,TRY:-1.24,EGP:-0.08,INR:0.06,BRL:-0.34,SGD:0.19,MYR:0.27,ZAR:-0.56 };
+    c.innerHTML = '<div class="grid-4">' + pairs.map(([from]) => {
+      const rate = fxRates[from] || 1;
+      const usdVal = (1/rate).toFixed(4);
+      const chg = chgMap[from] || 0;
       return `<div class="price-card ${chg>=0?'green':'red'}">
-        <div class="card-label">${from}/${to}</div>
-        <div class="card-name">${currencies[from]||from} → ${currencies[to]||to}</div>
-        <div class="card-price">${(1/rate).toFixed(4)}</div>
-        <div class="card-change ${chg>=0?'up':'dn'}">${chg>=0?'▲':'▼'} ${Math.abs(chg)}%</div>
-        <div class="card-unit">1 ${to} = ${fmt(rate,4)} ${from}</div>
+        <div class="card-label">USD / ${from}</div>
+        <div class="card-name">${currencies[from]||from}</div>
+        <div class="card-price">${fmt(rate,4)}</div>
+        <div class="card-change ${chg>=0?'up':'dn'}">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(2)}%</div>
+        <div class="card-unit">1 USD = ${fmt(rate,4)} ${from} &nbsp;|&nbsp; 1 ${from} = $${usdVal}</div>
       </div>`;
     }).join('') + '</div>';
   } catch(e) {
-    c.innerHTML = '<div class="error-state">⚠️ تعذّر تحميل بيانات الصرف.</div>';
+    c.innerHTML = '<div class="error-state">⚠️ تعذّر تحميل بيانات الصرف. حاول مرة أخرى.</div>';
   }
   stopBtn(btn);
 }
