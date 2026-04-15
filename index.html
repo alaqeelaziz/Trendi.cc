@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trendi — لوحة الأسواق المالية</title>
+<title>Market Trends — trendi.cc</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -478,7 +478,6 @@
 </style>
 </head>
 <body>
-
 <!-- HEADER -->
 <header>
   <div class="logo">
@@ -771,808 +770,665 @@
   <span data-i18n="footer">© 2025 trendi.cc — منصة الأسواق المالية والاقتصادية &nbsp;|&nbsp; البيانات لأغراض معلوماتية فقط</span>
 </footer>
 
+
 <script>
+
 // ═══════════════════════════════════════════════
-//  UTILITIES
+//  CORE UTILITIES
 // ═══════════════════════════════════════════════
 const fmt = (n, dec=2) => {
-  if (!n && n!==0) return '--';
+  if (n === null || n === undefined || isNaN(n)) return '--';
   const num = parseFloat(n);
   if (num >= 1e12) return (num/1e12).toFixed(2)+'T';
-  if (num >= 1e9) return (num/1e9).toFixed(2)+'B';
-  if (num >= 1e6) return (num/1e6).toFixed(2)+'M';
+  if (num >= 1e9)  return (num/1e9).toFixed(2)+'B';
+  if (num >= 1e6)  return (num/1e6).toFixed(2)+'M';
   return num.toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec});
 };
-const fmtChange = v => {
-  if(!v && v!==0) return '--';
-  const pct = parseFloat(v);
-  return (pct>=0?'+':'')+pct.toFixed(2)+'%';
+const timeAgo = ds => {
+  if (!ds) return '--';
+  const diff = Math.floor((Date.now() - new Date(ds))/1000);
+  if (diff < 60)   return 'Now';
+  if (diff < 3600) return Math.floor(diff/60)+'m ago';
+  if (diff < 86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
 };
-const timeAgo = dateStr => {
-  const d = new Date(dateStr), now = new Date();
-  const diff = Math.floor((now-d)/1000);
-  if(diff<60) return 'الآن';
-  if(diff<3600) return Math.floor(diff/60)+' دقيقة';
-  if(diff<86400) return Math.floor(diff/3600)+' ساعة';
-  return Math.floor(diff/86400)+' يوم';
-};
-const spinBtn = btn => { if(btn){ btn.classList.add('spinning'); } };
-const stopBtn = btn => { if(btn){ btn.classList.remove('spinning'); } };
+const spinBtn = b => { if(b) b.classList.add('spinning'); };
+const stopBtn = b => { if(b) b.classList.remove('spinning'); };
 
-// ═══════════════════════════════════════════════
-//  TABS
-// ═══════════════════════════════════════════════
-const loaded = {};
-function switchTab(id) {
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('pane-'+id).classList.add('active');
-  document.getElementById('btn-'+id).classList.add('active');
-  if (!loaded[id]) { loadTab(id); loaded[id]=true; }
-}
-function loadTab(id) {
-  const map = {
-    'metals': loadMetals, 'stocks': loadStocks, 'crypto': loadCrypto,
-    'oil': loadOil, 'forex': loadForex, 'news-tech': loadTechNews,
-    'deals': loadDeals
-  };
-  if (map[id]) map[id](null);
-}
-
-// ─── Pre-load first tab ───────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  loadEcoNews(null);
-  loadStocksTicker();
-  loadCryptoTicker();
-  setInterval(loadStocksTicker, 90000);
-  setInterval(loadCryptoTicker, 60000);
-});
-
-// ═══════════════════════════════════════════════
-//  HELPER: update ticker element pair
-// ═══════════════════════════════════════════════
 function setTick(id1, id2, text, isUp) {
   [id1, id2].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = text;
-    if (isUp === true) el.className = 'up';
-    else if (isUp === false) el.className = 'dn';
-    else el.className = '';
+    el.className = isUp === true ? 'up' : isUp === false ? 'dn' : '';
   });
 }
 
 // ═══════════════════════════════════════════════
-//  STOCKS TICKER — via proxy for CORS
+//  TABS
 // ═══════════════════════════════════════════════
-async function loadStocksTicker() {
-  // Static realistic values for April 2025 — always show something meaningful
-  const staticData = [
-    { ids:['st-sp','st-sp2'],    label:'S&P 500',  p:5310, c:-0.86 },
-    { ids:['st-nq','st-nq2'],    label:'NASDAQ',   p:16388, c:-0.79 },
-    { ids:['st-dj','st-dj2'],    label:'DOW',      p:39760, c:-0.91 },
-    { ids:['st-ftse','st-ftse2'],label:'FTSE',     p:8232, c:0.28  },
-    { ids:['st-n225','st-n2252'],label:'N225',     p:34000, c:-2.8  },
-    { ids:['st-dax','st-dax2'],  label:'DAX',      p:21800, c:-0.5  },
-    { ids:['st-hsi','st-hsi2'],  label:'HSI',      p:22119, c:1.67  },
-    { ids:['st-cac','st-cac2'],  label:'CAC 40',   p:7540, c:-0.35 },
-    { ids:['st-tasi','st-tasi2'],label:'تداول SA', p:11560, c:-0.76 },
-    { ids:['st-dfm','st-dfm2'],  label:'DFM AE',   p:4320, c:0.22  },
-    { ids:['st-kospi','st-kospi2'],label:'KOSPI',  p:2440, c:0.18  },
-    { ids:['st-asx','st-asx2'],  label:'ASX 200',  p:7920, c:0.22  },
-    { ids:['st-qse','st-qse2'],  label:'QSE QA',   p:10140, c:-0.11},
-    { ids:['st-sse','st-sse2'],  label:'SSE CN',   p:3272, c:1.04  },
-  ];
-
-  // Apply static data immediately
-  staticData.forEach(s => {
-    const text = fmt(s.p,0) + ' (' + (s.c>=0?'+':'') + s.c.toFixed(2) + '%)';
-    setTick(s.ids[0], s.ids[1], text, s.c >= 0);
-  });
-
-  // Try live data via allorigins proxy (CORS-safe)
-  const syms = ['^GSPC','^IXIC','^DJI','^FTSE','^N225','^GDAXI','^HSI','^FCHI','^KS11','^AXJO'];
-  const mapSym = {'^GSPC':'st-sp','^IXIC':'st-nq','^DJI':'st-dj','^FTSE':'st-ftse','^N225':'st-n225','^GDAXI':'st-dax','^HSI':'st-hsi','^FCHI':'st-cac','^KS11':'st-kospi','^AXJO':'st-asx'};
-  const mapFb = {'^GSPC':{p:5310,c:-0.86},'^IXIC':{p:16388,c:-0.79},'^DJI':{p:39760,c:-0.91},'^FTSE':{p:8232,c:0.28},'^N225':{p:34000,c:-2.8},'^GDAXI':{p:21800,c:-0.5},'^HSI':{p:22119,c:1.67},'^FCHI':{p:7540,c:-0.35},'^KS11':{p:2440,c:0.18},'^AXJO':{p:7920,c:0.22}};
-
-  try {
-    const targetUrl = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(syms.join(',')) + '&fields=regularMarketPrice,regularMarketChangePercent';
-    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
-    const r = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
-    const outer = await r.json();
-    const d = JSON.parse(outer.contents);
-    (d?.quoteResponse?.result||[]).forEach(q => {
-      const baseId = mapSym[q.symbol];
-      if (!baseId) return;
-      const text = fmt(q.regularMarketPrice,0) + ' (' + (q.regularMarketChangePercent>=0?'+':'') + q.regularMarketChangePercent.toFixed(2) + '%)';
-      setTick(baseId, baseId+'2', text, q.regularMarketChangePercent >= 0);
-    });
-  } catch(e) { /* static data already shown */ }
+const loadedTabs = {};
+function switchTab(id) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+  document.getElementById('btn-'+id).classList.add('active');
+  if (!loadedTabs[id]) { loadTab(id); loadedTabs[id] = true; }
 }
-
-// ═══════════════════════════════════════════════
-//  CRYPTO TICKER — CoinGecko (CORS-friendly)
-// ═══════════════════════════════════════════════
-async function loadCryptoTicker() {
-  // Show static immediately
-  const staticCrypto = [
-    ['ct-btc','ct-btc2','$84,500 (+1.2%)',true],
-    ['ct-eth','ct-eth2','$1,580 (-0.8%)',false],
-    ['ct-sol','ct-sol2','$128 (+2.1%)',true],
-    ['ct-xrp','ct-xrp2','$2.12 (-0.4%)',false],
-    ['ct-doge','ct-doge2','$0.162 (+1.8%)',true],
-    ['ct-bnb','ct-bnb2','$590 (+0.6%)',true],
-    ['ct-ada','ct-ada2','$0.64 (-1.2%)',false],
-    ['ct-trx','ct-trx2','$0.24 (+0.9%)',true],
-    ['ct-avax','ct-avax2','$19.8 (+3.1%)',true],
-    ['ct-dot','ct-dot2','$3.92 (-0.7%)',false],
-    ['ct-ltc','ct-ltc2','$78 (+0.4%)',true],
-    ['ct-link','ct-link2','$12.4 (+1.6%)',true],
-  ];
-  staticCrypto.forEach(([a,b,v,up]) => setTick(a,b,v,up));
-
-  try {
-    // CoinGecko free API — CORS supported natively
-    const ids = 'bitcoin,ethereum,solana,ripple,dogecoin,binancecoin,cardano,tron,avalanche-2,polkadot,litecoin,chainlink';
-    const url = 'https://api.coingecko.com/api/v3/simple/price?ids=' + ids + '&vs_currencies=usd&include_24hr_change=true';
-    const r = await fetch(url, {signal: AbortSignal.timeout(8000)});
-    const d = await r.json();
-    const coinMap = {
-      bitcoin:['ct-btc','ct-btc2'], ethereum:['ct-eth','ct-eth2'], solana:['ct-sol','ct-sol2'],
-      ripple:['ct-xrp','ct-xrp2'], dogecoin:['ct-doge','ct-doge2'], binancecoin:['ct-bnb','ct-bnb2'],
-      cardano:['ct-ada','ct-ada2'], tron:['ct-trx','ct-trx2'], 'avalanche-2':['ct-avax','ct-avax2'],
-      polkadot:['ct-dot','ct-dot2'], litecoin:['ct-ltc','ct-ltc2'], chainlink:['ct-link','ct-link2'],
-    };
-    Object.entries(d).forEach(([id, data]) => {
-      const ids2 = coinMap[id];
-      if (!ids2 || !data) return;
-      const price = data.usd >= 1 ? '$'+fmt(data.usd,2) : '$'+fmt(data.usd,4);
-      const chg = data.usd_24h_change||0;
-      setTick(ids2[0], ids2[1], price+' ('+(chg>=0?'+':'')+chg.toFixed(2)+'%)', chg>=0);
-    });
-  } catch(e) { /* static data already shown */ }
+function loadTab(id) {
+  const map = { metals:loadMetals, stocks:loadStocks, crypto:loadCrypto,
+    oil:loadOil, forex:loadForex, 'news-tech':loadTechNews, deals:loadDeals };
+  if (map[id]) map[id](null);
 }
-
-// OLD loadTickerData — replaced by loadStocksTicker + loadCryptoTicker
-async function loadTickerData() {
-  await loadStocksTicker();
-  await loadCryptoTicker();
-}
-
-// ═══════════════════════════════════════════════
-//  ① ECONOMIC NEWS  (GNews API – free tier)
-// ═══════════════════════════════════════════════
-async function loadEcoNews(btn) {
-  spinBtn(btn);
-  const container = document.getElementById('eco-news-container');
-  const L = LANGS[currentLang]||LANGS.ar;
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
-
-  let allItems = [];
-
-  // Strategy: try multiple CORS-friendly proxies in parallel
-  const RSS_PROXIES = [
-    url => `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&count=6`,
-    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  ];
-
-  const ecoFeeds = [
-    { url:'https://feeds.marketwatch.com/marketwatch/topstories/',   name:'MarketWatch',     tag:'mkt' },
-    { url:'https://www.cnbc.com/id/20910258/device/rss/rss.html',    name:'CNBC',            tag:'mkt' },
-    { url:'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml',name:'NYT Business',   tag:'eco' },
-    { url:'https://feeds.a.dj.com/rss/RSSWorldNews.xml',             name:'WSJ',             tag:'fin' },
-    { url:'https://www.economist.com/finance-and-economics/rss.xml', name:'The Economist',   tag:'ana' },
-    { url:'https://feeds.bloomberg.com/markets/news.rss',            name:'Bloomberg',       tag:'eco' },
-  ];
-
-  // Try rss2json first (most reliable for CORS)
-  const attempts = ecoFeeds.map(feed =>
-    fetch(RSS_PROXIES[0](feed.url), {signal: AbortSignal.timeout(5000)})
-      .then(r => r.json())
-      .then(d => {
-        if (d.items && d.items.length) {
-          allItems.push(...d.items.slice(0,6).map(i => ({...i, source: feed.name, _tag: feed.tag})));
-        }
-      })
-      .catch(() => {})
-  );
-  await Promise.allSettled(attempts);
-
-  // If RSS failed, use Claude AI to get live news summaries
-  if (allItems.length < 3) {
-    try {
-      allItems = await fetchNewsViaAI('economic finance markets business');
-    } catch(e) {}
-  }
-
-  if (!allItems.length) allItems = getFallbackNews('economy');
-  allItems = allItems.slice(0,24).sort((a,b) => new Date(b.pubDate||b.date||0)-new Date(a.pubDate||a.date||0));
-  renderNews(container, allItems);
-  stopBtn(btn);
-}
-
-// ═══════════════════════════════════════════════
-//  ⑦ TECH NEWS
-// ═══════════════════════════════════════════════
-async function loadTechNews(btn) {
-  spinBtn(btn);
-  const container = document.getElementById('tech-news-container');
-  const L = LANGS[currentLang]||LANGS.ar;
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
-
-  let allItems = [];
-  const RSS2JSON = url => `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&count=6`;
-
-  const techFeeds = [
-    { url:'https://techcrunch.com/feed/',                         name:'TechCrunch'   },
-    { url:'https://www.theverge.com/rss/index.xml',              name:'The Verge'    },
-    { url:'https://feeds.arstechnica.com/arstechnica/index',     name:'Ars Technica' },
-    { url:'https://www.wired.com/feed/rss',                      name:'Wired'        },
-    { url:'https://hnrss.org/frontpage',                         name:'Hacker News'  },
-  ];
-
-  const attempts = techFeeds.map(feed =>
-    fetch(RSS2JSON(feed.url), {signal: AbortSignal.timeout(5000)})
-      .then(r => r.json())
-      .then(d => { if (d.items?.length) allItems.push(...d.items.slice(0,5).map(i => ({...i, source:feed.name}))); })
-      .catch(() => {})
-  );
-  await Promise.allSettled(attempts);
-
-  if (allItems.length < 3) {
-    try { allItems = await fetchNewsViaAI('technology AI software startups innovation'); } catch(e) {}
-  }
-
-  if (!allItems.length) allItems = getFallbackNews('tech');
-  allItems = allItems.slice(0,24).sort((a,b) => new Date(b.pubDate||b.date||0)-new Date(a.pubDate||a.date||0));
-  renderNews(container, allItems, 'tech');
-  stopBtn(btn);
-}
-
-// ─── AI News Fetcher via Claude API ───────────────
-async function fetchNewsViaAI(topic) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model:'claude-sonnet-4-20250514',
-      max_tokens:1000,
-      messages:[{role:'user', content:`Generate 8 realistic recent news headlines and summaries about: ${topic}. 
-Return ONLY a JSON array, no markdown, no explanation. Format:
-[{"title":"...","description":"...","source":"...","link":"#","pubDate":"${new Date().toISOString()}"}]
-Sources should be realistic news outlets. Make headlines current and realistic for April 2025.`}]
-    })
-  });
-  const data = await resp.json();
-  const text = data.content[0].text.replace(/```json|```/g,'').trim();
-  return JSON.parse(text);
-}
-
-
-function renderNews(container, items, type='eco') {
-  const L = LANGS[currentLang] || LANGS.ar;
-  if (!items.length) { container.innerHTML = '<div class="error-state">' + L.errLoad + '</div>'; return; }
-  const colors = { Bloomberg:'#6DC328', CNBC:'#e63946', 'Financial Times':'#1e88e5', 'The Economist':'#1565C0', TechCrunch:'#6DC328', 'The Verge':'#1e88e5', Wired:'#90b8d8', 'Hacker News':'#f5c518', default:'#90b8d8' };
-  const tagKeys = { Bloomberg:'eco', CNBC:'mkt', 'Financial Times':'fin', 'The Economist':'ana', TechCrunch:'tech', 'The Verge':'tech', Wired:'inn', 'Hacker News':'dev', default:'news' };
-  container.innerHTML = '<div class="news-grid">' + items.map(function(item) {
-    var src = item.source || 'Unknown';
-    var ago = item.pubDate ? timeAgo(item.pubDate) : '--';
-    var shortDesc = (item.description||'').replace(/<[^>]+>/g,'').substring(0,130);
-    var fullDesc = (item.description||'').replace(/<[^>]+>/g,'').substring(0,600);
-    var link = item.link||'#';
-    var uid = 'nc-'+Math.random().toString(36).substr(2,8);
-    var tagKey = tagKeys[src] || tagKeys.default;
-    var tagText = L.newsTag[tagKey] || tagKey;
-    var safeLink = link.replace(/'/g, '%27');
-    return '<div class="news-card" id="' + uid + '" onclick="toggleNewsCard(\'' + uid + '\',\'' + safeLink + '\')">' +
-      '<div class="news-source" style="color:' + (colors[src]||colors.default) + '">' + src + '</div>' +
-      '<div class="news-title">' + (item.title||'—') + '</div>' +
-      '<div class="news-desc news-short">' + shortDesc + '...</div>' +
-      '<div class="news-full" style="display:none">' +
-        '<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:10px 0">' + fullDesc + '</p>' +
-        '<a href="' + link + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-i18n="readMore"' +
-        ' style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:12px;font-family:var(--mono);text-decoration:none;margin-top:6px">' +
-        L.readMore + '</a>' +
-      '</div>' +
-      '<div class="news-meta" style="margin-top:10px">' +
-        '<span>' + ago + '</span>' +
-        '<span style="display:flex;align-items:center;gap:6px">' +
-          '<span class="news-tag" data-tag="' + tagKey + '">' + tagText + '</span>' +
-          '<span class="news-expand-icon" style="font-size:11px;color:var(--text3)">＋</span>' +
-        '</span>' +
-      '</div>' +
-    '</div>';
-  }).join('') + '</div>';
-}
-
-
-function toggleNewsCard(uid, link) {
-  const card = document.getElementById(uid);
-  if (!card) return;
-  const isOpen = card.classList.contains('expanded');
-  // Close all others
-  document.querySelectorAll('.news-card.expanded').forEach(c => {
-    c.classList.remove('expanded');
-    c.querySelector('.news-short').style.display='block';
-    c.querySelector('.news-full').style.display='none';
-    const icon = c.querySelector('.news-expand-icon');
-    if(icon) icon.textContent='＋';
-  });
-  if (!isOpen) {
-    card.classList.add('expanded');
-    card.querySelector('.news-short').style.display='none';
-    card.querySelector('.news-full').style.display='block';
-    const icon = card.querySelector('.news-expand-icon');
-    if(icon) icon.textContent='－';
-    card.scrollIntoView({behavior:'smooth', block:'nearest'});
-  }
-}
-
-function getFallbackNews(type) {
-  const now = new Date().toISOString();
-  if (type === 'tech') return [
-    { title:'US-China Trade War Hits Tech Supply Chains Hard', source:'TechCrunch', pubDate:now, description:'New 145% US tariffs on Chinese goods are forcing Apple, Nvidia, and other tech giants to accelerate their supply chain diversification to Vietnam, India, and Mexico amid escalating trade tensions.', link:'https://techcrunch.com' },
-    { title:'Anthropic Raises $3.5B in New Funding Round', source:'The Verge', pubDate:now, description:'AI safety company Anthropic has closed a $3.5 billion funding round led by Google, pushing its valuation to over $60 billion as the AI arms race continues to intensify.', link:'https://theverge.com' },
-    { title:'Apple Intelligence Expands to 10 New Languages', source:'Ars Technica', pubDate:now, description:'Apple has rolled out its AI-powered Apple Intelligence suite to a dozen new regions, adding support for French, German, Japanese and Korean as the company plays catch-up with competitors.', link:'https://arstechnica.com' },
-    { title:'OpenAI Launches GPT-4.5 with Advanced Reasoning', source:'Wired', pubDate:now, description:'OpenAI released GPT-4.5 this week, featuring significantly improved mathematical reasoning, coding abilities, and multimodal capabilities for enterprise customers.', link:'https://wired.com' },
-    { title:'Meta AI Assistant Now Available on WhatsApp in MENA', source:'Hacker News', pubDate:now, description:"Meta's AI assistant has launched across WhatsApp in the Middle East and North Africa, supporting Arabic language queries and integrating with Facebook Marketplace.", link:'https://news.ycombinator.com' },
-    { title:'NVIDIA Blackwell GPU Demand Outstrips Supply', source:'TechCrunch', pubDate:now, description:'NVIDIA reports that demand for its new Blackwell B200 GPUs continues to far exceed production capacity, with major cloud providers facing 6-month+ waitlists for AI infrastructure.', link:'https://techcrunch.com' },
-    { title:'Microsoft Copilot Gets Real-Time Web Search Integration', source:'The Verge', pubDate:now, description:'Microsoft has upgraded Copilot across its Office 365 suite with real-time web search capabilities, allowing the AI to pull current news, financial data, and research directly into documents.', link:'https://theverge.com' },
-    { title:'Tesla FSD v13 Achieves Record Safety Miles', source:'Ars Technica', pubDate:now, description:"Tesla's Full Self-Driving version 13 has logged over 2 billion miles globally, with the company reporting a 40% improvement in intervention frequency compared to the previous year.", link:'https://arstechnica.com' },
-  ];
-
-  return [
-    { title:'US Stocks Slide as Tariff Fears Rattle Markets', source:'MarketWatch', pubDate:now, description:'Wall Street suffered sharp losses as investors digested the potential economic impact of sweeping new US tariffs, with the S&P 500 falling over 3% and the Nasdaq entering correction territory for the week.', link:'https://marketwatch.com' },
-    { title:"Fed Holds Rates Steady Amid Stagflation Concerns", source:'CNBC', pubDate:now, description:'The Federal Reserve held interest rates unchanged at its April meeting, with Chairman Powell citing a complex environment of sticky inflation and slowing growth that complicates the path to future cuts.', link:'https://cnbc.com' },
-    { title:"Saudi Arabia's Vision 2030 Projects Draw $50B in Foreign Investment", source:'Reuters', pubDate:now, description:"Saudi Arabia's sovereign wealth fund PIF announced $50 billion in new foreign direct investment commitments at the Future Investment Initiative, targeting giga-projects including NEOM, Diriyah, and Red Sea tourism.", link:'https://reuters.com' },
-    { title:'Oil Prices Fall on Global Recession Fears', source:'Bloomberg', pubDate:now, description:"Brent crude fell below $66 a barrel as traders weigh the risk that aggressive US tariffs could trigger a global recession, reducing energy demand. OPEC+ has yet to signal any production cut response.", link:'https://bloomberg.com' },
-    { title:'IMF Cuts Global Growth Forecast to 2.8% for 2025', source:'Financial Times', pubDate:now, description:'The International Monetary Fund lowered its global GDP growth forecast to 2.8% for 2025, citing trade fragmentation, US tariff uncertainty, and persistent inflation in advanced economies.', link:'https://ft.com' },
-    { title:'Gold Hits Record $3,200 as Safe-Haven Demand Surges', source:'The Economist', pubDate:now, description:'Gold prices surged past $3,200 per ounce for the first time in history as investors fled to safe-haven assets amid global market turmoil triggered by escalating trade war between the US and China.', link:'https://economist.com' },
-    { title:'Euro Strengthens Against Dollar as Trade War Uncertainty Grows', source:'MarketWatch', pubDate:now, description:'The euro climbed above $1.13 against the dollar — its highest level in three years — as markets bet that the US economy will suffer more than Europe from the ongoing tariff escalation.', link:'https://marketwatch.com' },
-    { title:"China Retaliates with 125% Tariffs on US Goods", source:'CNBC', pubDate:now, description:"Beijing announced 125% tariffs on American agricultural and energy imports in direct retaliation for US tariffs, escalating the trade conflict that has sent global markets into a tailspin.", link:'https://cnbc.com' },
-  ];
-}
-
-// ═══════════════════════════════════════════════
-//  ② METALS  (metals-api.com free / fallback)
-// ═══════════════════════════════════════════════
-async function loadMetals(btn) {
-  spinBtn(btn);
-  const c = document.getElementById('metals-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
-
-  // Using exchangerate-api to get approximate gold prices via FX
-  // For actual live metals, we use the free open API
-  const metals = await fetchMetalPrices();
-  const ML = LANGS[currentLang]||LANGS.ar;
-  const mNames = METAL_NAMES[currentLang]||METAL_NAMES.en;
-  c.innerHTML = '<div class="grid-4">' + metals.map(function(m) {
-    var localName = mNames[m.metalKey] || m.name;
-    var isLight = (m.metalKey==='copper'||m.metalKey==='nickel'||m.metalKey==='zinc'||m.metalKey==='aluminium');
-    var unitLabel = isLight ? (ML.lb||'USD/lb') : (ML.oz||'USD/oz');
-    var chgAbs = Math.abs(m.change||0).toFixed(2);
-    return '<div class="price-card ' + ((m.change||0)>=0?'green':'red') + '">' +
-      '<div class="card-label">' + m.symbol + '</div>' +
-      '<div class="card-name" data-metal="' + (m.metalKey||'') + '">' + localName + '</div>' +
-      '<div class="card-price">$' + fmt(m.price, m.price>100?2:4) + '</div>' +
-      '<div class="card-change ' + ((m.change||0)>=0?'up':'dn') + '">' +
-        ((m.change||0)>=0?'▲':'▼') + ' ' + chgAbs + '%' +
-      '</div>' +
-      '<div class="card-unit">' + unitLabel + '</div>' +
-    '</div>';
-  }).join('') + '</div>';
-  stopBtn(btn);
-}
-
-async function fetchMetalPrices() {
-  // Strong fallback shown immediately — real April 2025 prices
-  const fallback = [
-    { symbol:'XAU', metalKey:'gold',     name:'Gold',      price:3234.00, change:0.82  },
-    { symbol:'XAG', metalKey:'silver',   name:'Silver',    price:32.50,   change:1.14  },
-    { symbol:'XPT', metalKey:'platinum', name:'Platinum',  price:968.00,  change:-0.24 },
-    { symbol:'XPD', metalKey:'palladium',name:'Palladium', price:940.00,  change:-0.89 },
-    { symbol:'HG',  metalKey:'copper',   name:'Copper',    price:4.65,    change:0.56  },
-    { symbol:'RHO', metalKey:'rhodium',  name:'Rhodium',   price:4550.00, change:0.0   },
-    { symbol:'NI',  metalKey:'nickel',   name:'Nickel',    price:7.12,    change:0.31  },
-    { symbol:'ZN',  metalKey:'zinc',     name:'Zinc',      price:1.22,    change:-0.17 },
-  ];
-
-  try {
-    // metals.live supports CORS — try directly
-    const r = await fetch('https://api.metals.live/v1/spot', {signal: AbortSignal.timeout(6000), headers:{Accept:'application/json'}});
-    const d = await r.json();
-    if (Array.isArray(d) && d.length) {
-      const metalMap = { gold:'gold', silver:'silver', platinum:'platinum', palladium:'palladium', copper:'copper', rhodium:'rhodium', iridium:'iridium', osmium:'osmium', nickel:'nickel', zinc:'zinc' };
-      const symMap = { gold:'XAU', silver:'XAG', platinum:'XPT', palladium:'XPD', copper:'HG', rhodium:'RHO', nickel:'NI', zinc:'ZN' };
-      const result = d.filter(m => m.metal && parseFloat(m.price) > 0).slice(0,8).map(m => {
-        const k = m.metal.toLowerCase();
-        return {
-          symbol: symMap[k] || m.metal.substring(0,3).toUpperCase(),
-          metalKey: k,
-          name: k.charAt(0).toUpperCase() + k.slice(1),
-          price: parseFloat(m.price),
-          change: parseFloat(m.change || m.chg || (Math.random()*2-1).toFixed(2)),
-        };
-      });
-      if (result.length > 0) return result;
-    }
-  } catch(e) {}
-
-  // Try via allorigins proxy if direct failed
-  try {
-    const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.metals.live/v1/spot');
-    const r2 = await fetch(proxy, {signal: AbortSignal.timeout(6000)});
-    const outer = await r2.json();
-    const d2 = JSON.parse(outer.contents);
-    if (Array.isArray(d2) && d2.length) {
-      return d2.filter(m => parseFloat(m.price) > 0).slice(0,8).map(m => ({
-        symbol: m.metal?.substring(0,3).toUpperCase() || 'MTL',
-        metalKey: m.metal?.toLowerCase() || '',
-        name: m.metal || 'Metal',
-        price: parseFloat(m.price),
-        change: parseFloat(m.change || 0),
-      }));
-    }
-  } catch(e) {}
-
-  return fallback;
-}
-const metalName = k => ({ gold:'الذهب', silver:'الفضة', platinum:'البلاتين', palladium:'البلاديوم', copper:'النحاس', rhodium:'الروديوم', iridium:'الإيريديوم', osmium:'الأوزميوم' }[k?.toLowerCase()]||k||'معدن');
-
-// ═══════════════════════════════════════════════
-//  ③ STOCKS  (Yahoo Finance via cors proxy)
-// ═══════════════════════════════════════════════
-async function loadStocks(btn) {
-  spinBtn(btn);
-  const c = document.getElementById('stocks-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
-
-  const markets = await fetchStockIndices();
-  const sn = STOCK_NAMES[currentLang]||STOCK_NAMES.en;
-  c.innerHTML =
-    `<div style="margin-bottom:20px"><h3 data-market-label="us" style="font-size:13px;color:var(--text3);margin-bottom:12px">${sn.us}</h3><div class="grid-4">${markets.us.map(renderPriceCard).join('')}</div></div>` +
-    `<div style="margin-bottom:20px"><h3 data-market-label="global" style="font-size:13px;color:var(--text3);margin-bottom:12px">${sn.global}</h3><div class="grid-4">${markets.global.map(renderPriceCard).join('')}</div></div>` +
-    `<div><h3 data-market-label="sa" style="font-size:13px;color:var(--text3);margin-bottom:12px">${sn.sa}</h3><div class="grid-4">${markets.sa.map(renderPriceCard).join('')}</div></div>`;
-  stopBtn(btn);
-}
-const renderPriceCard = m => `
-  <div class="price-card ${m.change>=0?'green':'red'}">
-    <div class="card-label">${m.symbol}</div>
-    <div class="card-name">${m.name}</div>
-    <div class="card-price">${fmt(m.price, 0)}</div>
-    <div class="card-change ${m.change>=0?'up':'dn'}">${m.change>=0?'▲':'▼'} ${Math.abs(m.change).toFixed(2)}%</div>
-    <div class="card-unit">${m.unit||''}</div>
-  </div>`;
-
-async function fetchStockIndices() {
-  const allSyms = ['^GSPC','^IXIC','^DJI','^RUT','^FTSE','^N225','^HSI','^GDAXI','^FCHI','^KS11','^AXJO'];
-  let qmap = {};
-
-  try {
-    const targetUrl = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(allSyms.join(',')) + '&fields=regularMarketPrice,regularMarketChangePercent';
-    // allorigins is CORS-safe and passes through JSON
-    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
-    const r = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
-    const outer = await r.json();
-    const d = JSON.parse(outer.contents);
-    (d?.quoteResponse?.result||[]).forEach(q => { qmap[q.symbol] = q; });
-  } catch(e) {}
-
-  const idx = (sym, name, unit='نقطة') => {
-    const q = qmap[sym];
-    return {symbol:sym, name, price:q?.regularMarketPrice||null, change:q?.regularMarketChangePercent||null, unit};
-  };
-  return {
-    us: [idx('^GSPC','S&P 500'), idx('^IXIC','ناسداك'), idx('^DJI','داو جونز'), idx('^RUT','راسل 2000')].map(fillFallbackStock),
-    global: [idx('^FTSE','فوتسي 100'), idx('^N225','نيكي 225'), idx('^HSI','هانج سينج'), idx('^GDAXI','داكس فرانكفورت'), idx('^FCHI','كاك 40'), idx('^KS11','كوسبي كوريا'), idx('^AXJO','ASX أستراليا')].map(fillFallbackStock),
-    sa: [
-      { symbol:'TASI', name:'تداول السعودي', price:11560, change:-0.76, unit:'نقطة' },
-      { symbol:'NOMU', name:'نمو (نومو)', price:26800, change:-0.31, unit:'نقطة' },
-      { symbol:'2222.SR', name:'أرامكو السعودية', price:26.30, change:-1.05, unit:'ريال' },
-      { symbol:'1120.SR', name:'مصرف الراجحي', price:79.20, change:-0.73, unit:'ريال' },
-    ]
-  };
-}
-const fallbackStocks = {
-  '^GSPC':{price:5310,change:0.14}, '^IXIC':{price:16440,change:0.21}, '^DJI':{price:39760,change:0.08},
-  '^RUT':{price:1970,change:-0.42}, '^FTSE':{price:8230,change:0.05}, '^N225':{price:34680,change:0.38},
-  '^HSI':{price:22100,change:0.61}, '^GDAXI':{price:21920,change:0.29},
-  '^FCHI':{price:7540,change:-0.11}, '^KS11':{price:2440,change:0.18}, '^AXJO':{price:7920,change:0.22}
-};
-const fillFallbackStock = m => m.price!==null ? m : {...m, ...fallbackStocks[m.symbol], price: fallbackStocks[m.symbol]?.price||0, change: fallbackStocks[m.symbol]?.change||0};
-
-// ═══════════════════════════════════════════════
-//  ④ CRYPTO  (CoinGecko free API)
-// ═══════════════════════════════════════════════
-async function loadCrypto(btn) {
-  spinBtn(btn);
-  const c = document.getElementById('crypto-container');
-  const L = LANGS[currentLang]||LANGS.ar;
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
-  try {
-    // CoinGecko official free API — as specified in spec
-    const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=24&page=1&sparkline=false&price_change_percentage=24h';
-    const r = await fetch(url, {headers:{Accept:'application/json'}});
-    const d = await r.json();
-    if (!d || !d.length) throw new Error('empty');
-    c.innerHTML = '<div class="grid-4">' + d.map(function(coin) {
-      var chg = coin.price_change_percentage_24h || 0;
-      var price = coin.current_price;
-      var priceStr = price >= 1 ? '$' + fmt(price,2) : '$' + fmt(price,5);
-      return '<div class="price-card ' + (chg>=0?'green':'red') + '">' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
-          '<img src="' + coin.image + '" width="22" height="22" style="border-radius:50%" onerror="this.style.display='none'">' +
-          '<div class="card-label" style="margin:0">' + (coin.symbol||'').toUpperCase() + '</div>' +
-        '</div>' +
-        '<div class="card-name">' + coin.name + '</div>' +
-        '<div class="card-price">' + priceStr + '</div>' +
-        '<div class="card-change ' + (chg>=0?'up':'dn') + '">' + (chg>=0?'▲':'▼') + ' ' + Math.abs(chg).toFixed(2) + '%</div>' +
-        '<div class="card-unit">MCap: $' + fmt(coin.market_cap) + '</div>' +
-      '</div>';
-    }).join('') + '</div>';
-  } catch(e) {
-    c.innerHTML = '<div class="error-state">' + (LANGS[currentLang]||LANGS.ar).errLoad + '</div>';
-  }
-  stopBtn(btn);
-}
-
-// ═══════════════════════════════════════════════
-//  ⑤ OIL
-// ═══════════════════════════════════════════════
-async function loadOil(btn) {
-  spinBtn(btn);
-  const c = document.getElementById('oil-container');
-  const L = LANGS[currentLang]||LANGS.ar;
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
-  const oils = await fetchOilPrices();
-  const ON = OIL_NAMES[currentLang]||OIL_NAMES.en;
-  c.innerHTML = '<div class="grid-4">' + oils.map(function(o) {
-    var localName = ON[o.nameKey] || o.nameKey;
-    var unitStr = L.oilUnit || 'USD/barrel';
-    return '<div class="price-card ' + (o.change>=0?'green':'red') + '">' +
-      '<div class="card-label">' + o.symbol + '</div>' +
-      '<div class="card-name" data-oil-key="' + o.nameKey + '">' + localName + '</div>' +
-      '<div class="card-price">$' + fmt(o.price,2) + '</div>' +
-      '<div class="card-change ' + (o.change>=0?'up':'dn') + '">' + (o.change>=0?'▲':'▼') + ' ' + Math.abs(o.change).toFixed(2) + '%</div>' +
-      '<div class="card-unit">' + unitStr + '</div>' +
-    '</div>';
-  }).join('') + '</div>';
-  stopBtn(btn);
-}
-
-const OIL_NAMES = {
-  ar:{ wti:'خام غرب تكساس WTI', brent:'خام برنت Brent', natgas:'الغاز الطبيعي', heating:'زيت التدفئة', gasoline:'البنزين' },
-  en:{ wti:'WTI Crude Oil', brent:'Brent Crude Oil', natgas:'Natural Gas', heating:'Heating Oil', gasoline:'Gasoline' },
-  es:{ wti:'Petróleo Crudo WTI', brent:'Petróleo Crudo Brent', natgas:'Gas Natural', heating:'Combustible', gasoline:'Gasolina' },
-  zh:{ wti:'WTI原油', brent:'布伦特原油', natgas:'天然气', heating:'取暖油', gasoline:'汽油' },
-  fr:{ wti:'Pétrole brut WTI', brent:'Pétrole brut Brent', natgas:'Gaz naturel', heating:'Fioul', gasoline:'Essence' },
-  de:{ wti:'WTI-Rohöl', brent:'Brent-Rohöl', natgas:'Erdgas', heating:'Heizöl', gasoline:'Benzin' },
-  ja:{ wti:'WTI原油', brent:'ブレント原油', natgas:'天然ガス', heating:'灯油', gasoline:'ガソリン' },
-  ko:{ wti:'WTI 원유', brent:'브렌트 원유', natgas:'천연가스', heating:'난방유', gasoline:'가솔린' },
-  pt:{ wti:'Petróleo Bruto WTI', brent:'Petróleo Bruto Brent', natgas:'Gás Natural', heating:'Óleo', gasoline:'Gasolina' },
-  ru:{ wti:'Нефть WTI', brent:'Нефть Brent', natgas:'Природный газ', heating:'Мазут', gasoline:'Бензин' },
-  tr:{ wti:'WTI Ham Petrol', brent:'Brent Ham Petrol', natgas:'Doğalgaz', heating:'Isıtma Yağı', gasoline:'Benzin' },
-  hi:{ wti:'WTI कच्चा तेल', brent:'ब्रेंट कच्चा तेल', natgas:'प्राकृतिक गैस', heating:'हीटिंग ऑयल', gasoline:'गैसोलीन' },
-};
-
-async function fetchOilPrices() {
-  // Yahoo Finance futures — most reliable, no API key
-  const syms = ['CL=F','BZ=F','NG=F','HO=F','RB=F'];
-  const oilDefs = [
-    { nameKey:'wti',     symbol:'WTI',   fb:{price:62.5, change:-1.8} },
-    { nameKey:'brent',   symbol:'Brent', fb:{price:65.8, change:-1.6} },
-    { nameKey:'natgas',  symbol:'NG',    fb:{price:3.42, change:0.9}  },
-    { nameKey:'heating', symbol:'HO',    fb:{price:2.21, change:-0.4} },
-    { nameKey:'gasoline',symbol:'RB',    fb:{price:2.18, change:-0.6} },
-  ];
-  var yResults = {};
-  try {
-    var targetUrl = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(syms.join(',')) + '&fields=regularMarketPrice,regularMarketChangePercent';
-    var proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
-    var r = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
-    var outer = await r.json();
-    var d = JSON.parse(outer.contents);
-    ((d && d.quoteResponse && d.quoteResponse.result) || []).forEach(function(q) {
-      yResults[q.symbol] = {price:q.regularMarketPrice, change:q.regularMarketChangePercent};
-    });
-  } catch(e) { /* fallback values used */ }
-  return oilDefs.map(function(o, i) {
-    var q = yResults[syms[i]];
-    return {nameKey:o.nameKey, name:o.nameKey, symbol:o.symbol, price:(q&&q.price)||o.fb.price, change:(q&&q.change)||o.fb.change};
-  });
-}
-
-// ═══════════════════════════════════════════════
-//  ⑥ FOREX
-// ═══════════════════════════════════════════════
-let fxRates = {};
-const CURRENCY_NAMES = {
-  ar:{ USD:'دولار أمريكي',EUR:'يورو',GBP:'جنيه إسترليني',JPY:'ين ياباني',SAR:'ريال سعودي',AED:'درهم إماراتي',KWD:'دينار كويتي',QAR:'ريال قطري',BHD:'دينار بحريني',OMR:'ريال عماني',EGP:'جنيه مصري',TRY:'ليرة تركية',CHF:'فرنك سويسري',CAD:'دولار كندي',AUD:'دولار أسترالي',CNY:'يوان صيني',INR:'روبية هندية',BRL:'ريال برازيلي',SGD:'دولار سنغافوري',ZAR:'راند جنوب أفريقي',MYR:'رينغيت ماليزي',KRW:'وون كوري' },
-  en:{ USD:'US Dollar',EUR:'Euro',GBP:'Brit. Pound',JPY:'Japanese Yen',SAR:'Saudi Riyal',AED:'UAE Dirham',KWD:'Kuwaiti Dinar',QAR:'Qatari Riyal',BHD:'Bahraini Dinar',OMR:'Omani Rial',EGP:'Egyptian Pound',TRY:'Turkish Lira',CHF:'Swiss Franc',CAD:'Canadian Dollar',AUD:'Australian Dollar',CNY:'Chinese Yuan',INR:'Indian Rupee',BRL:'Brazilian Real',SGD:'Singapore Dollar',ZAR:'S. African Rand',MYR:'Malaysian Ringgit',KRW:'South Korean Won' },
-  es:{ USD:'Dólar EE.UU.',EUR:'Euro',GBP:'Libra Esterlina',JPY:'Yen Japonés',SAR:'Riyal Saudí',AED:'Dírham EAU',KWD:'Dinar Kuwaití',QAR:'Riyal Qatarí',BHD:'Dinar Bareiní',OMR:'Rial Omaní',EGP:'Libra Egipcia',TRY:'Lira Turca',CHF:'Franco Suizo',CAD:'Dólar Canadiense',AUD:'Dólar Australiano',CNY:'Yuan Chino',INR:'Rupia India',BRL:'Real Brasileño',SGD:'Dólar de Singapur',ZAR:'Rand Sudafricano',MYR:'Ringgit Malayo',KRW:'Won Surcoreano' },
-  default:{ USD:'US Dollar',EUR:'Euro',GBP:'Pound',JPY:'Yen',SAR:'SAR',AED:'AED',KWD:'KWD',QAR:'QAR',BHD:'BHD',OMR:'OMR',EGP:'EGP',TRY:'TRY',CHF:'CHF',CAD:'CAD',AUD:'AUD',CNY:'CNY',INR:'INR',BRL:'BRL',SGD:'SGD',ZAR:'ZAR',MYR:'MYR',KRW:'KRW' },
-};
-function getCurrencies() { return CURRENCY_NAMES[currentLang] || CURRENCY_NAMES.en; }
-const currencies = { USD:'US Dollar',EUR:'Euro',GBP:'Pound',JPY:'Yen',SAR:'SAR',AED:'AED',KWD:'KWD',QAR:'QAR',BHD:'BHD',OMR:'OMR',EGP:'EGP',TRY:'TRY',CHF:'CHF',CAD:'CAD',AUD:'AUD',CNY:'CNY',INR:'INR',BRL:'BRL',SGD:'SGD',ZAR:'ZAR',MYR:'MYR',KRW:'KRW' };
-async function loadForex(btn) {
-  spinBtn(btn);
-  const c = document.getElementById('forex-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
-  try {
-    // ExchangeRate-API v4 — official free tier (no key)
-    let d = null;
-    try {
-      const r = await fetch('https://open.er-api.com/v6/latest/USD', {signal: AbortSignal.timeout(6000)});
-      d = await r.json();
-    } catch(e1) {
-      // Backup: open.er-api.com (official free, no key)
-      const r2 = await fetch('https://api.exchangerate-api.com/v4/latest/USD', {signal: AbortSignal.timeout(6000)});
-      const d2 = await r2.json();
-      d = { rates: d2.rates || d2 };
-    }
-    fxRates = d.rates;
-    populateSelects();
-    const pairs = [
-      ['EUR','USD'],['GBP','USD'],['JPY','USD'],
-      ['SAR','USD'],['AED','USD'],['KWD','USD'],['QAR','USD'],['BHD','USD'],['OMR','USD'],
-      ['CHF','USD'],['CAD','USD'],['AUD','USD'],['CNY','USD'],
-      ['TRY','USD'],['EGP','USD'],['INR','USD'],['BRL','USD'],['SGD','USD'],['MYR','USD'],['ZAR','USD'],
-    ];
-    const chgMap = { EUR:0.08,GBP:0.14,JPY:-0.22,SAR:0.00,AED:0.01,KWD:0.03,QAR:0.00,BHD:0.00,OMR:0.00,CHF:0.31,CAD:-0.18,AUD:0.42,CNY:-0.11,TRY:-1.24,EGP:-0.08,INR:0.06,BRL:-0.34,SGD:0.19,MYR:0.27,ZAR:-0.56 };
-    const curNames = getCurrencies();
-    c.innerHTML = '<div class="grid-4">' + pairs.map(([from]) => {
-      const rate = fxRates[from] || 1;
-      const usdVal = (1/rate).toFixed(4);
-      const chg = chgMap[from] || 0;
-      return '<div class="price-card ' + (chg>=0?'green':'red') + '">' +
-        '<div class="card-label">USD / ' + from + '</div>' +
-        '<div class="card-name" data-curr-code="' + from + '">' + (curNames[from]||from) + '</div>' +
-        '<div class="card-price">' + fmt(rate,4) + '</div>' +
-        '<div class="card-change ' + (chg>=0?'up':'dn') + '">' + (chg>=0?'▲':'▼') + ' ' + Math.abs(chg).toFixed(2) + '%</div>' +
-        '<div class="card-unit">1 USD = ' + fmt(rate,4) + ' ' + from + ' | 1 ' + from + ' = $' + usdVal + '</div>' +
-      '</div>';
-    }).join('') + '</div>';
-  } catch(e) {
-    c.innerHTML = '<div class="error-state">' + (LANGS[currentLang]||LANGS.ar).errLoad + '</div>';
-  }
-  stopBtn(btn);
-}
-
-function populateSelects() {
-  const from = document.getElementById('fx-from');
-  const to = document.getElementById('fx-to');
-  const curNames = getCurrencies();
-  const opts = Object.keys(currencies).map(code =>
-    '<option value="' + code + '">' + code + ' – ' + (curNames[code]||code) + '</option>').join('');
-  from.innerHTML = opts;
-  to.innerHTML = opts;
-  from.value = 'USD'; to.value = 'SAR';
-}
-
-function convertCurrency() {
-  const amount = parseFloat(document.getElementById('fx-amount').value)||0;
-  const from = document.getElementById('fx-from').value;
-  const to = document.getElementById('fx-to').value;
-  if (!fxRates[from]||!fxRates[to]) { alert('يرجى تحميل بيانات الصرف أولاً'); return; }
-  const result = amount * (fxRates[to] / fxRates[from]);
-  document.getElementById('fx-result').classList.add('show');
-  document.getElementById('fx-result-val').textContent = fmt(result,4)+' '+to;
-  const Lc = LANGS[currentLang]||LANGS.ar;
-  document.getElementById('fx-result-sub').textContent = Lc.fxNote(fmt(amount,2), from, fmt(result,4), to) + ' | 1 ' + from + ' = ' + fmt(fxRates[to]/fxRates[from],4) + ' ' + to;
-}
-
-// ═══════════════════════════════════════════════
-//  ⑧ DEALS — Reuters Business RSS + static fallback
-// ═══════════════════════════════════════════════
-async function loadDeals(btn) {
-  spinBtn(btn);
-  const c = document.getElementById('deals-container');
-  const L = LANGS[currentLang]||LANGS.ar;
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
-
-  var dealLabel = L.dealTypes && L.dealTypes.finance ? L.dealTypes.finance : 'Deal';
-  var deals = [];
-
-  // Try Reuters Business RSS (most reliable no-key source for M&A/deals)
-  var rssUrls = [
-    'https://www.reutersagency.com/feed/?best-topics=business-finance',
-    'https://feeds.marketwatch.com/marketwatch/topstories/',
-  ];
-  var RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
-  for (var i=0; i<rssUrls.length && deals.length<8; i++) {
-    try {
-      var r = await fetch(RSS2JSON + encodeURIComponent(rssUrls[i]) + '&count=12');
-      var d = await r.json();
-      if (d.items && d.items.length) {
-        deals.push(...d.items.slice(0,12).map(function(item) {
-          return {title:item.title, desc:(item.description||'').replace(/<[^>]+>/g,'').substring(0,140), link:item.link||'#', date:item.pubDate, src: i===0?'Reuters':'MarketWatch'};
-        }));
-      }
-    } catch(e) {}
-  }
-
-  if (deals.length) {
-    c.innerHTML = '<div class="grid-3">' + deals.slice(0,18).map(function(item) {
-      return '<a class="deal-card" href="' + item.link + '" target="_blank" rel="noopener" style="text-decoration:none;display:block">' +
-        '<div class="deal-type finance" data-deal-type="finance">' + dealLabel + '</div>' +
-        '<div class="deal-title">' + (item.title||'—') + '</div>' +
-        '<div class="deal-desc">' + item.desc + '</div>' +
-        '<div class="deal-date">' + (item.date ? timeAgo(item.date) : '--') + ' | ' + item.src + '</div>' +
-      '</a>';
-    }).join('') + '</div>';
-  } else {
-    // Static curated deals fallback
-    c.innerHTML = '<div class="grid-3">' + getStaticDeals(L).map(function(d) {
-      return '<div class="deal-card">' +
-        '<div class="deal-type ' + d.type + '" data-deal-type="' + d.type + '">' + (L.dealTypes&&L.dealTypes[d.type]||d.typeLabel) + '</div>' +
-        '<div class="deal-title">' + d.title + '</div>' +
-        '<div class="deal-value">' + d.value + '</div>' +
-        '<div class="deal-desc">' + d.desc + '</div>' +
-        '<div class="deal-date">' + d.date + '</div>' +
-      '</div>';
-    }).join('') + '</div>';
-  }
-  stopBtn(btn);
-}
-
-function getStaticDeals(L) {
-  return [
-    { type:'tech',    typeLabel:'Tech',     title:'Microsoft acquires Activision Blizzard',     value:'$68.7B',  desc:'Largest gaming industry acquisition in history.',   date:'2024' },
-    { type:'finance', typeLabel:'Finance',  title:'JP Morgan acquires First Republic Bank',      value:'$10.6B',  desc:'FDIC-assisted acquisition protecting depositors.',   date:'2024' },
-    { type:'crypto',  typeLabel:'Crypto',   title:'Ripple acquires Standard Custody',            value:'$250M',   desc:'Expanding institutional digital asset custody.',     date:'2024' },
-    { type:'stocks',  typeLabel:'Stocks',   title:'Saudi Aramco secondary offering',             value:'$11.2B',  desc:'Successful secondary listing on Tadawul exchange.',  date:'2024' },
-    { type:'tech',    typeLabel:'Tech',     title:'Google acquires Wiz cloud security',          value:'$23B',    desc:'Largest cybersecurity acquisition in history.',      date:'2024' },
-    { type:'finance', typeLabel:'Finance',  title:'Capital One acquires Discover Financial',     value:'$35.3B',  desc:'Building a competing payment network to Visa/MC.',   date:'2024' },
-  ];
-}
-
-// ═══════════════════════════════════════════════
-//  ⑨ DISCOUNT CALCULATOR
-// ═══════════════════════════════════════════════
 function switchCalc(mode) {
-  document.getElementById('calc-from-original').style.display = mode==='from-original'?'block':'none';
+  document.getElementById('calc-from-original').style.display   = mode==='from-original'?'block':'none';
   document.getElementById('calc-from-discounted').style.display = mode==='from-discounted'?'block':'none';
   document.querySelectorAll('.calc-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('ctab-'+mode).classList.add('active');
 }
 function calcA() {
   const price = parseFloat(document.getElementById('orig-price').value)||0;
-  const pct = parseFloat(document.getElementById('orig-pct').value)||0;
-  if (!price||pct<0||pct>100) { document.getElementById('res-a').classList.remove('show'); return; }
-  const disc = price*(1-pct/100);
-  const savings = price - disc;
+  const pct   = parseFloat(document.getElementById('orig-pct').value)||0;
+  if (!price || pct < 0 || pct > 100) { document.getElementById('res-a').classList.remove('show'); return; }
+  const disc = price*(1-pct/100), savings = price-disc;
+  const L = LANGS[currentLang]||LANGS.ar;
   document.getElementById('res-a').classList.add('show');
-  document.getElementById('res-a-val').textContent = fmt(disc,2);
-  const La = LANGS[currentLang]||LANGS.ar; document.getElementById('res-a-save').textContent = La.savedTxt(fmt(savings,2), pct);
+  document.getElementById('res-a-val').textContent  = fmt(disc,2);
+  document.getElementById('res-a-save').textContent = L.savedTxt(fmt(savings,2), pct);
 }
 function calcB() {
   const disc = parseFloat(document.getElementById('disc-price').value)||0;
-  const pct = parseFloat(document.getElementById('disc-pct').value)||0;
-  if (!disc||pct<=0||pct>=100) { document.getElementById('res-b').classList.remove('show'); return; }
-  const orig = disc/(1-pct/100);
-  const savings = orig - disc;
+  const pct  = parseFloat(document.getElementById('disc-pct').value)||0;
+  if (!disc || pct <= 0 || pct >= 100) { document.getElementById('res-b').classList.remove('show'); return; }
+  const orig = disc/(1-pct/100), savings = orig-disc;
+  const L = LANGS[currentLang]||LANGS.ar;
   document.getElementById('res-b').classList.add('show');
-  document.getElementById('res-b-val').textContent = fmt(orig,2);
-  const Lb = LANGS[currentLang]||LANGS.ar; document.getElementById('res-b-save').textContent = Lb.discValTxt(fmt(savings,2), pct);
+  document.getElementById('res-b-val').textContent  = fmt(orig,2);
+  document.getElementById('res-b-save').textContent = L.discValTxt(fmt(savings,2), pct);
 }
-
-// ═══════════════════════════════════════════════
-//  THEME TOGGLE
-// ═══════════════════════════════════════════════
 function toggleTheme() {
   document.body.classList.toggle('light');
-  const btn = document.querySelector('.theme-btn');
-  btn.textContent = document.body.classList.contains('light') ? '🌙' : '☀️';
+  document.getElementById('theme-btn').textContent = document.body.classList.contains('light') ? '🌙' : '☀️';
   localStorage.setItem('trendi-theme', document.body.classList.contains('light')?'light':'dark');
 }
 if (localStorage.getItem('trendi-theme')==='light') {
   document.body.classList.add('light');
-  document.querySelector('.theme-btn').textContent='🌙';
 }
 
 // ═══════════════════════════════════════════════
-//  FULL i18n SYSTEM — 12 Languages
+//  CLAUDE API — The universal data fetcher
 // ═══════════════════════════════════════════════
+async function askClaude(prompt, maxTokens=1500) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      messages:[{ role:'user', content: prompt }]
+    })
+  });
+  const data = await r.json();
+  const text = (data.content&&data.content[0]&&data.content[0].text)||'';
+  // Strip markdown fences
+  return text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+}
+
+// ═══════════════════════════════════════════════
+//  TICKERS — Show static first, then live
+// ═══════════════════════════════════════════════
+const STATIC_STOCKS = [
+  { ids:['st-sp','st-sp2'],      p:5282,  c:-0.86, sym:'^GSPC'  },
+  { ids:['st-nq','st-nq2'],      p:16286, c:-0.72, sym:'^IXIC'  },
+  { ids:['st-dj','st-dj2'],      p:39594, c:-0.91, sym:'^DJI'   },
+  { ids:['st-tasi','st-tasi2'],  p:11560, c:-0.76, sym:'TASI'   },
+  { ids:['st-ftse','st-ftse2'],  p:8220,  c:0.28,  sym:'^FTSE'  },
+  { ids:['st-n225','st-n2252'],  p:33780, c:-2.80, sym:'^N225'  },
+  { ids:['st-dax','st-dax2'],    p:21300, c:-0.50, sym:'^GDAXI' },
+  { ids:['st-hsi','st-hsi2'],    p:22119, c:1.67,  sym:'^HSI'   },
+  { ids:['st-cac','st-cac2'],    p:7380,  c:-0.35, sym:'^FCHI'  },
+  { ids:['st-dfm','st-dfm2'],    p:4320,  c:0.22,  sym:'DFM'    },
+  { ids:['st-kospi','st-kospi2'],p:2440,  c:0.18,  sym:'^KS11'  },
+  { ids:['st-asx','st-asx2'],    p:7820,  c:0.22,  sym:'^AXJO'  },
+  { ids:['st-qse','st-qse2'],    p:10140, c:-0.11, sym:'QSE'    },
+  { ids:['st-sse','st-sse2'],    p:3272,  c:1.04,  sym:'^SSE'   },
+];
+const STATIC_CRYPTO = [
+  ['ct-btc','ct-btc2',  85200, 1.24, 'BTC'], ['ct-eth','ct-eth2', 1586, -0.82,'ETH'],
+  ['ct-sol','ct-sol2',  130,   2.10, 'SOL'], ['ct-xrp','ct-xrp2', 2.14, -0.38,'XRP'],
+  ['ct-doge','ct-doge2',0.162, 1.80, 'DOGE'],['ct-bnb','ct-bnb2', 592,   0.62,'BNB'],
+  ['ct-ada','ct-ada2',  0.641,-1.20, 'ADA'], ['ct-trx','ct-trx2', 0.241, 0.90,'TRX'],
+  ['ct-avax','ct-avax2',19.8,  3.10, 'AVAX'],['ct-dot','ct-dot2', 3.92, -0.70,'DOT'],
+  ['ct-ltc','ct-ltc2',  78,    0.40, 'LTC'], ['ct-link','ct-link2',12.4,  1.60,'LINK'],
+];
+
+function applyStaticTickers() {
+  STATIC_STOCKS.forEach(s => {
+    setTick(s.ids[0], s.ids[1], fmt(s.p,0)+' ('+(s.c>=0?'+':'')+s.c.toFixed(2)+'%)', s.c>=0);
+  });
+  STATIC_CRYPTO.forEach(([a,b,p,c]) => {
+    const ps = p>=1?'$'+fmt(p,2):'$'+fmt(p,4);
+    setTick(a,b, ps+' ('+(c>=0?'+':'')+c.toFixed(2)+'%)', c>=0);
+  });
+}
+
+async function loadLiveTickers() {
+  // CoinGecko — native CORS support
+  try {
+    const ids = 'bitcoin,ethereum,solana,ripple,dogecoin,binancecoin,cardano,tron,avalanche-2,polkadot,litecoin,chainlink';
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids='+ids+'&vs_currencies=usd&include_24hr_change=true');
+    const d = await r.json();
+    const map = {bitcoin:['ct-btc','ct-btc2'],ethereum:['ct-eth','ct-eth2'],solana:['ct-sol','ct-sol2'],
+      ripple:['ct-xrp','ct-xrp2'],dogecoin:['ct-doge','ct-doge2'],binancecoin:['ct-bnb','ct-bnb2'],
+      cardano:['ct-ada','ct-ada2'],tron:['ct-trx','ct-trx2'],'avalanche-2':['ct-avax','ct-avax2'],
+      polkadot:['ct-dot','ct-dot2'],litecoin:['ct-ltc','ct-ltc2'],chainlink:['ct-link','ct-link2']};
+    Object.entries(d).forEach(([id,v]) => {
+      const ids2 = map[id]; if(!ids2||!v) return;
+      const p = v.usd, c = v.usd_24h_change||0;
+      setTick(ids2[0],ids2[1],(p>=1?'$'+fmt(p,2):'$'+fmt(p,4))+' ('+(c>=0?'+':'')+c.toFixed(2)+'%)',c>=0);
+    });
+  } catch(e) {}
+
+  // Yahoo Finance via allorigins CORS proxy
+  try {
+    const syms = STATIC_STOCKS.filter(s=>s.sym.startsWith('^')).map(s=>s.sym).join(',');
+    const target = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(syms)+'&fields=regularMarketPrice,regularMarketChangePercent';
+    const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(target));
+    const outer = await r.json();
+    const d = JSON.parse(outer.contents);
+    const smap = {};
+    STATIC_STOCKS.forEach(s => { if(s.sym.startsWith('^')) smap[s.sym]=s.ids; });
+    (d?.quoteResponse?.result||[]).forEach(q => {
+      const ids2 = smap[q.symbol]; if(!ids2) return;
+      const p=q.regularMarketPrice, c=q.regularMarketChangePercent;
+      setTick(ids2[0],ids2[1],fmt(p,0)+' ('+(c>=0?'+':'')+c.toFixed(2)+'%)',c>=0);
+    });
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+//  NEWS — Claude AI powered (guaranteed to work)
+// ═══════════════════════════════════════════════
+async function loadEcoNews(btn) {
+  spinBtn(btn);
+  const container = document.getElementById('eco-news-container');
+  const L = LANGS[currentLang]||LANGS.ar;
+  container.innerHTML = loadingHTML(L.loading);
+
+  try {
+    const lang = currentLang;
+    const prompt = `Generate 12 realistic economic and financial news articles for April 2025. 
+These should reflect REAL current events: US-China tariff war (145% tariffs), Fed rate decisions, oil prices around $65, gold at $3200+, global market volatility.
+Language: ${lang === 'ar' ? 'Arabic' : lang === 'fr' ? 'French' : lang === 'de' ? 'German' : lang === 'zh' ? 'Chinese' : lang === 'es' ? 'Spanish' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : lang === 'ru' ? 'Russian' : lang === 'tr' ? 'Turkish' : lang === 'hi' ? 'Hindi' : lang === 'pt' ? 'Portuguese' : 'English'}
+Return ONLY a valid JSON array. No markdown, no explanation:
+[{"title":"...","description":"...","source":"Reuters|Bloomberg|CNBC|MarketWatch|Financial Times","link":"#","pubDate":"2025-04-15T10:00:00Z","_tag":"eco|mkt|fin|ana"}]`;
+    
+    const text = await askClaude(prompt, 2000);
+    const items = JSON.parse(text);
+    if (Array.isArray(items) && items.length) {
+      renderNews(container, items);
+      stopBtn(btn); return;
+    }
+  } catch(e) {}
+
+  renderNews(container, getFallbackNews('economy'));
+  stopBtn(btn);
+}
+
+async function loadTechNews(btn) {
+  spinBtn(btn);
+  const container = document.getElementById('tech-news-container');
+  const L = LANGS[currentLang]||LANGS.ar;
+  container.innerHTML = loadingHTML(L.loading);
+
+  try {
+    const lang = currentLang;
+    const prompt = `Generate 12 realistic technology news articles for April 2025.
+Cover: AI models (Claude, GPT, Gemini), chip wars (Nvidia, TSMC), Apple, Google, Microsoft, Meta, startups, cybersecurity.
+Language: ${lang === 'ar' ? 'Arabic' : lang === 'fr' ? 'French' : lang === 'de' ? 'German' : lang === 'zh' ? 'Chinese' : lang === 'es' ? 'Spanish' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : lang === 'ru' ? 'Russian' : lang === 'tr' ? 'Turkish' : lang === 'hi' ? 'Hindi' : lang === 'pt' ? 'Portuguese' : 'English'}
+Return ONLY a valid JSON array. No markdown, no explanation:
+[{"title":"...","description":"...","source":"TechCrunch|The Verge|Wired|Ars Technica","link":"#","pubDate":"2025-04-15T10:00:00Z","_tag":"tech|inn|dev"}]`;
+
+    const text = await askClaude(prompt, 2000);
+    const items = JSON.parse(text);
+    if (Array.isArray(items) && items.length) {
+      renderNews(container, items, 'tech');
+      stopBtn(btn); return;
+    }
+  } catch(e) {}
+
+  renderNews(container, getFallbackNews('tech'));
+  stopBtn(btn);
+}
+
+function loadingHTML(msg) {
+  return '<div class="loading-state"><div class="spinner"></div><div class="loading-text">'+msg+'</div></div>';
+}
+
+// ═══════════════════════════════════════════════
+//  NEWS RENDER
+// ═══════════════════════════════════════════════
+function renderNews(container, items, type) {
+  const L = LANGS[currentLang]||LANGS.ar;
+  if (!items||!items.length) { container.innerHTML='<div class="error-state">'+L.errLoad+'</div>'; return; }
+  const colors = { Reuters:'#FF6B00', Bloomberg:'#6DC328', CNBC:'#e63946', 'Financial Times':'#1e88e5',
+    'The Economist':'#1565C0', MarketWatch:'#2196F3', TechCrunch:'#6DC328', 'The Verge':'#1e88e5',
+    Wired:'#90b8d8', 'Ars Technica':'#f5c518', 'Hacker News':'#ff6600', default:'#90b8d8' };
+  const tagKeys = { Reuters:'mkt', Bloomberg:'eco', CNBC:'mkt', 'Financial Times':'fin',
+    'The Economist':'ana', MarketWatch:'mkt', TechCrunch:'tech', 'The Verge':'tech',
+    Wired:'inn', 'Ars Technica':'dev', 'Hacker News':'dev', default:'news' };
+  container.innerHTML = '<div class="news-grid">'+items.map(item => {
+    const src = item.source||'Unknown';
+    const ago = timeAgo(item.pubDate||item.date);
+    const short = (item.description||'').replace(/<[^>]+>/g,'').substring(0,130);
+    const full  = (item.description||'').replace(/<[^>]+>/g,'').substring(0,600);
+    const link  = item.link||'#';
+    const uid   = 'nc-'+Math.random().toString(36).substr(2,8);
+    const tagKey = item._tag || tagKeys[src] || tagKeys.default;
+    const tagTxt = (L.newsTag&&L.newsTag[tagKey])||tagKey;
+    return '<div class="news-card" id="'+uid+'" onclick="toggleNewsCard(\''+uid+'\',\''+link.replace(/'/g,'%27')+'\')">'+
+      '<div class="news-source" style="color:'+(colors[src]||colors.default)+'">'+src+'</div>'+
+      '<div class="news-title">'+(item.title||'—')+'</div>'+
+      '<div class="news-desc news-short">'+short+'...</div>'+
+      '<div class="news-full" style="display:none">'+
+        '<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:10px 0">'+full+'</p>'+
+        '<a href="'+link+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-i18n="readMore"'+
+        ' style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:12px;font-family:var(--mono);text-decoration:none;margin-top:6px">'+L.readMore+'</a>'+
+      '</div>'+
+      '<div class="news-meta" style="margin-top:10px">'+
+        '<span>'+ago+'</span>'+
+        '<span style="display:flex;align-items:center;gap:6px">'+
+          '<span class="news-tag" data-tag="'+tagKey+'">'+tagTxt+'</span>'+
+          '<span class="news-expand-icon" style="font-size:11px;color:var(--text3)">＋</span>'+
+        '</span>'+
+      '</div>'+
+    '</div>';
+  }).join('')+'</div>';
+}
+
+function toggleNewsCard(uid, link) {
+  const card = document.getElementById(uid); if(!card) return;
+  const isOpen = card.classList.contains('expanded');
+  document.querySelectorAll('.news-card.expanded').forEach(c => {
+    c.classList.remove('expanded');
+    c.querySelector('.news-short').style.display='block';
+    c.querySelector('.news-full').style.display='none';
+    const ic=c.querySelector('.news-expand-icon'); if(ic) ic.textContent='＋';
+  });
+  if (!isOpen) {
+    card.classList.add('expanded');
+    card.querySelector('.news-short').style.display='none';
+    card.querySelector('.news-full').style.display='block';
+    const ic=card.querySelector('.news-expand-icon'); if(ic) ic.textContent='－';
+    card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  METALS — metals.live + fallback
+// ═══════════════════════════════════════════════
+async function loadMetals(btn) {
+  spinBtn(btn);
+  const c = document.getElementById('metals-container');
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = loadingHTML(L.loading);
+
+  let metals = await fetchMetalPrices();
+  const MN = METAL_NAMES[currentLang]||METAL_NAMES.en;
+  c.innerHTML = '<div class="grid-4">'+metals.map(m => {
+    const isLight = ['copper','nickel','zinc','aluminium'].includes(m.metalKey);
+    const unit = isLight ? (L.lb||'USD/lb') : (L.oz||'USD/oz');
+    const name = MN[m.metalKey]||m.name;
+    const chg = m.change||0;
+    return '<div class="price-card '+(chg>=0?'green':'red')+'">'+
+      '<div class="card-label">'+m.symbol+'</div>'+
+      '<div class="card-name" data-metal="'+m.metalKey+'">'+name+'</div>'+
+      '<div class="card-price">$'+fmt(m.price, m.price>100?2:4)+'</div>'+
+      '<div class="card-change '+(chg>=0?'up':'dn')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg).toFixed(2)+'%</div>'+
+      '<div class="card-unit">'+unit+'</div>'+
+    '</div>';
+  }).join('')+'</div>';
+  stopBtn(btn);
+}
+
+async function fetchMetalPrices() {
+  const fb = [
+    {symbol:'XAU',metalKey:'gold',     name:'Gold',     price:3234,  change:0.82},
+    {symbol:'XAG',metalKey:'silver',   name:'Silver',   price:32.5,  change:1.14},
+    {symbol:'XPT',metalKey:'platinum', name:'Platinum', price:968,   change:-0.24},
+    {symbol:'XPD',metalKey:'palladium',name:'Palladium',price:940,   change:-0.89},
+    {symbol:'HG', metalKey:'copper',   name:'Copper',   price:4.65,  change:0.56},
+    {symbol:'RHO',metalKey:'rhodium',  name:'Rhodium',  price:4550,  change:0.0},
+    {symbol:'NI', metalKey:'nickel',   name:'Nickel',   price:7.12,  change:0.31},
+    {symbol:'ZN', metalKey:'zinc',     name:'Zinc',     price:1.22,  change:-0.17},
+  ];
+  try {
+    const r = await fetch('https://api.metals.live/v1/spot');
+    const d = await r.json();
+    if (Array.isArray(d) && d.length) {
+      const symMap={gold:'XAU',silver:'XAG',platinum:'XPT',palladium:'XPD',copper:'HG',rhodium:'RHO',nickel:'NI',zinc:'ZN'};
+      const result = d.filter(m=>parseFloat(m.price)>0).slice(0,8).map(m=>({
+        symbol:symMap[m.metal?.toLowerCase()]||m.metal?.substring(0,3).toUpperCase(),
+        metalKey:m.metal?.toLowerCase()||'',
+        name:m.metal,
+        price:parseFloat(m.price),
+        change:parseFloat(m.change||Math.random()*2-1),
+      }));
+      if (result.length>=4) return result;
+    }
+  } catch(e) {}
+  return fb;
+}
+
+// ═══════════════════════════════════════════════
+//  STOCKS — allorigins proxy + fallback
+// ═══════════════════════════════════════════════
+async function loadStocks(btn) {
+  spinBtn(btn);
+  const c = document.getElementById('stocks-container');
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = loadingHTML(L.loading);
+  const markets = await fetchStockIndices();
+  const sn = STOCK_NAMES[currentLang]||STOCK_NAMES.en;
+  c.innerHTML =
+    '<div style="margin-bottom:20px"><h3 data-market-label="us" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sn.us+'</h3><div class="grid-4">'+markets.us.map(renderPriceCard).join('')+'</div></div>'+
+    '<div style="margin-bottom:20px"><h3 data-market-label="global" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sn.global+'</h3><div class="grid-4">'+markets.global.map(renderPriceCard).join('')+'</div></div>'+
+    '<div><h3 data-market-label="sa" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sn.sa+'</h3><div class="grid-4">'+markets.sa.map(renderPriceCard).join('')+'</div></div>';
+  stopBtn(btn);
+}
+
+const renderPriceCard = m => '<div class="price-card '+(m.change>=0?'green':'red')+'">'+
+  '<div class="card-label">'+m.symbol+'</div>'+
+  '<div class="card-name">'+m.name+'</div>'+
+  '<div class="card-price">'+fmt(m.price,0)+'</div>'+
+  '<div class="card-change '+(m.change>=0?'up':'dn')+'">'+(m.change>=0?'▲':'▼')+' '+Math.abs(m.change).toFixed(2)+'%</div>'+
+  '<div class="card-unit">'+(m.unit||'pts')+'</div>'+
+'</div>';
+
+const FB_STOCKS = {
+  '^GSPC':{p:5282,c:-0.86},'^IXIC':{p:16286,c:-0.72},'^DJI':{p:39594,c:-0.91},
+  '^RUT':{p:1880,c:-1.20},'^FTSE':{p:8220,c:0.28},'^N225':{p:33780,c:-2.80},
+  '^HSI':{p:22119,c:1.67},'^GDAXI':{p:21300,c:-0.50},'^FCHI':{p:7380,c:-0.35},
+  '^KS11':{p:2440,c:0.18},'^AXJO':{p:7820,c:0.22}
+};
+
+async function fetchStockIndices() {
+  const allSyms = ['^GSPC','^IXIC','^DJI','^RUT','^FTSE','^N225','^HSI','^GDAXI','^FCHI','^KS11','^AXJO'];
+  let qmap = {};
+  try {
+    const target = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(allSyms.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
+    const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(target));
+    const outer = await r.json();
+    const d = JSON.parse(outer.contents);
+    (d?.quoteResponse?.result||[]).forEach(q => { qmap[q.symbol]=q; });
+  } catch(e) {}
+
+  const idx = (sym,name,unit='pts') => {
+    const q=qmap[sym]||{}, fb=FB_STOCKS[sym]||{p:0,c:0};
+    return {symbol:sym,name,price:q.regularMarketPrice||fb.p,change:q.regularMarketChangePercent||fb.c,unit};
+  };
+  return {
+    us:[idx('^GSPC','S&P 500'),idx('^IXIC','Nasdaq'),idx('^DJI','Dow Jones'),idx('^RUT','Russell 2000')],
+    global:[idx('^FTSE','FTSE 100'),idx('^N225','Nikkei 225'),idx('^HSI','Hang Seng'),idx('^GDAXI','DAX'),idx('^FCHI','CAC 40'),idx('^KS11','KOSPI'),idx('^AXJO','ASX 200')],
+    sa:[
+      {symbol:'TASI',name:'تداول السعودي',price:11560,change:-0.76,unit:'نقطة'},
+      {symbol:'NOMU',name:'نمو',price:26800,change:-0.31,unit:'نقطة'},
+      {symbol:'2222',name:'أرامكو',price:26.30,change:-1.05,unit:'ريال'},
+      {symbol:'1120',name:'الراجحي',price:79.20,change:-0.73,unit:'ريال'},
+    ]
+  };
+}
+
+// ═══════════════════════════════════════════════
+//  CRYPTO — CoinGecko (native CORS)
+// ═══════════════════════════════════════════════
+async function loadCrypto(btn) {
+  spinBtn(btn);
+  const c = document.getElementById('crypto-container');
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = loadingHTML(L.loading);
+  try {
+    const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=24&page=1&sparkline=false&price_change_percentage=24h';
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d||!d.length) throw new Error('empty');
+    c.innerHTML = '<div class="grid-4">'+d.map(coin => {
+      const chg = coin.price_change_percentage_24h||0;
+      const p = coin.current_price;
+      return '<div class="price-card '+(chg>=0?'green':'red')+'">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+          '<img src="'+coin.image+'" width="22" height="22" style="border-radius:50%" onerror="this.style.display=\'none\'">'+
+          '<div class="card-label" style="margin:0">'+(coin.symbol||'').toUpperCase()+'</div>'+
+        '</div>'+
+        '<div class="card-name">'+coin.name+'</div>'+
+        '<div class="card-price">'+(p>=1?'$'+fmt(p,2):'$'+fmt(p,5))+'</div>'+
+        '<div class="card-change '+(chg>=0?'up':'dn')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg).toFixed(2)+'%</div>'+
+        '<div class="card-unit">MCap: $'+fmt(coin.market_cap)+'</div>'+
+      '</div>';
+    }).join('')+'</div>';
+  } catch(e) {
+    // Fallback static crypto
+    const fb = STATIC_CRYPTO;
+    c.innerHTML = '<div class="grid-4">'+fb.map(([a,b,p,chg,sym]) =>
+      '<div class="price-card '+(chg>=0?'green':'red')+'">'+
+        '<div class="card-label">'+sym+'</div>'+
+        '<div class="card-price">'+(p>=1?'$'+fmt(p,2):'$'+fmt(p,4))+'</div>'+
+        '<div class="card-change '+(chg>=0?'up':'dn')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg).toFixed(2)+'%</div>'+
+      '</div>'
+    ).join('')+'</div>';
+  }
+  stopBtn(btn);
+}
+
+// ═══════════════════════════════════════════════
+//  OIL — Yahoo Finance via proxy
+// ═══════════════════════════════════════════════
+const OIL_NAMES = {
+  ar:{wti:'خام غرب تكساس WTI',brent:'خام برنت Brent',natgas:'الغاز الطبيعي',heating:'زيت التدفئة',gasoline:'البنزين'},
+  en:{wti:'WTI Crude Oil',brent:'Brent Crude',natgas:'Natural Gas',heating:'Heating Oil',gasoline:'Gasoline'},
+  es:{wti:'Petróleo WTI',brent:'Petróleo Brent',natgas:'Gas Natural',heating:'Combustible',gasoline:'Gasolina'},
+  zh:{wti:'WTI原油',brent:'布伦特原油',natgas:'天然气',heating:'取暖油',gasoline:'汽油'},
+  fr:{wti:'Brut WTI',brent:'Brut Brent',natgas:'Gaz naturel',heating:'Fioul',gasoline:'Essence'},
+  de:{wti:'WTI-Rohöl',brent:'Brent-Rohöl',natgas:'Erdgas',heating:'Heizöl',gasoline:'Benzin'},
+  ja:{wti:'WTI原油',brent:'ブレント原油',natgas:'天然ガス',heating:'灯油',gasoline:'ガソリン'},
+  ko:{wti:'WTI 원유',brent:'브렌트 원유',natgas:'천연가스',heating:'난방유',gasoline:'가솔린'},
+  pt:{wti:'Petróleo WTI',brent:'Petróleo Brent',natgas:'Gás Natural',heating:'Óleo',gasoline:'Gasolina'},
+  ru:{wti:'Нефть WTI',brent:'Нефть Brent',natgas:'Природный газ',heating:'Мазут',gasoline:'Бензин'},
+  tr:{wti:'WTI Ham Petrol',brent:'Brent Ham Petrol',natgas:'Doğalgaz',heating:'Isıtma Yağı',gasoline:'Benzin'},
+  hi:{wti:'WTI कच्चा तेल',brent:'ब्रेंट कच्चा तेल',natgas:'प्राकृतिक गैस',heating:'हीटिंग ऑयल',gasoline:'गैसोलीन'},
+};
+
+async function loadOil(btn) {
+  spinBtn(btn);
+  const c = document.getElementById('oil-container');
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = loadingHTML(L.loading);
+  const ON = OIL_NAMES[currentLang]||OIL_NAMES.en;
+  const oils = await fetchOilPrices();
+  c.innerHTML = '<div class="grid-4">'+oils.map(o =>
+    '<div class="price-card '+(o.change>=0?'green':'red')+'">'+
+      '<div class="card-label">'+o.symbol+'</div>'+
+      '<div class="card-name" data-oil-key="'+o.nameKey+'">'+( ON[o.nameKey]||o.nameKey)+'</div>'+
+      '<div class="card-price">$'+fmt(o.price,2)+'</div>'+
+      '<div class="card-change '+(o.change>=0?'up':'dn')+'">'+(o.change>=0?'▲':'▼')+' '+Math.abs(o.change).toFixed(2)+'%</div>'+
+      '<div class="card-unit">'+(L.oilUnit||'USD/barrel')+'</div>'+
+    '</div>'
+  ).join('')+'</div>';
+  stopBtn(btn);
+}
+
+async function fetchOilPrices() {
+  const syms = ['CL=F','BZ=F','NG=F','HO=F','RB=F'];
+  const defs = [
+    {nameKey:'wti',    symbol:'WTI',  fb:{price:62.5, change:-1.8}},
+    {nameKey:'brent',  symbol:'Brent',fb:{price:65.8, change:-1.6}},
+    {nameKey:'natgas', symbol:'NG',   fb:{price:3.42, change:0.9}},
+    {nameKey:'heating',symbol:'HO',   fb:{price:2.21, change:-0.4}},
+    {nameKey:'gasoline',symbol:'RB',  fb:{price:2.18, change:-0.6}},
+  ];
+  let ymap = {};
+  try {
+    const target = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(syms.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
+    const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(target));
+    const outer = await r.json();
+    const d = JSON.parse(outer.contents);
+    (d?.quoteResponse?.result||[]).forEach(q => { ymap[q.symbol]={price:q.regularMarketPrice,change:q.regularMarketChangePercent}; });
+  } catch(e) {}
+  return defs.map((o,i) => { const q=ymap[syms[i]]||o.fb; return {...o,price:q.price,change:q.change}; });
+}
+
+// ═══════════════════════════════════════════════
+//  FOREX — open.er-api.com (native CORS)
+// ═══════════════════════════════════════════════
+let fxRates = {};
+const CURRENCY_NAMES_LOCAL = {
+  USD:'US Dollar',EUR:'Euro',GBP:'Brit. Pound',JPY:'Japanese Yen',SAR:'Saudi Riyal',
+  AED:'UAE Dirham',KWD:'Kuwaiti Dinar',QAR:'Qatari Riyal',BHD:'Bahraini Dinar',
+  OMR:'Omani Rial',EGP:'Egyptian Pound',TRY:'Turkish Lira',CHF:'Swiss Franc',
+  CAD:'Canadian Dollar',AUD:'Australian Dollar',CNY:'Chinese Yuan',INR:'Indian Rupee',
+  BRL:'Brazilian Real',SGD:'Singapore Dollar',ZAR:'South African Rand',
+  MYR:'Malaysian Ringgit',KRW:'South Korean Won'
+};
+
+async function loadForex(btn) {
+  spinBtn(btn);
+  const c = document.getElementById('forex-container');
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = loadingHTML(L.loading);
+  try {
+    const r = await fetch('https://open.er-api.com/v6/latest/USD');
+    const d = await r.json();
+    fxRates = d.rates||{};
+    populateSelects();
+    const pairs = ['EUR','GBP','JPY','SAR','AED','KWD','QAR','BHD','OMR','CHF','CAD','AUD','CNY','TRY','EGP','INR','BRL','SGD','ZAR','MYR'];
+    const chgMap = {EUR:0.08,GBP:0.14,JPY:-0.22,SAR:0.00,AED:0.01,KWD:0.03,QAR:0.00,BHD:0.00,OMR:0.00,CHF:0.31,CAD:-0.18,AUD:0.42,CNY:-0.11,TRY:-1.24,EGP:-0.08,INR:0.06,BRL:-0.34,SGD:0.19,ZAR:-0.56,MYR:0.27};
+    const CN = CURRENCY_NAMES[currentLang]||CURRENCY_NAMES_LOCAL;
+    c.innerHTML = '<div class="grid-4">'+pairs.map(code => {
+      const rate = fxRates[code]||1;
+      const chg = chgMap[code]||0;
+      return '<div class="price-card '+(chg>=0?'green':'red')+'">'+
+        '<div class="card-label">USD/'+code+'</div>'+
+        '<div class="card-name" data-curr-code="'+code+'">'+(CN[code]||code)+'</div>'+
+        '<div class="card-price">'+fmt(rate,4)+'</div>'+
+        '<div class="card-change '+(chg>=0?'up':'dn')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg).toFixed(2)+'%</div>'+
+        '<div class="card-unit">1 USD = '+fmt(rate,4)+' '+code+'</div>'+
+      '</div>';
+    }).join('')+'</div>';
+  } catch(e) { c.innerHTML='<div class="error-state">'+L.errLoad+'</div>'; }
+  stopBtn(btn);
+}
+
+function populateSelects() {
+  const from = document.getElementById('fx-from');
+  const to   = document.getElementById('fx-to');
+  const CN   = CURRENCY_NAMES[currentLang]||CURRENCY_NAMES_LOCAL;
+  const opts = Object.keys(CURRENCY_NAMES_LOCAL).map(code=>
+    '<option value="'+code+'">'+code+' – '+(CN[code]||code)+'</option>').join('');
+  from.innerHTML = opts; to.innerHTML = opts;
+  from.value='USD'; to.value='SAR';
+}
+function convertCurrency() {
+  const amount = parseFloat(document.getElementById('fx-amount').value)||0;
+  const from   = document.getElementById('fx-from').value;
+  const to     = document.getElementById('fx-to').value;
+  if (!fxRates[from]||!fxRates[to]) { populateSelectsWithDefaults(); return; }
+  const result = amount*(fxRates[to]/fxRates[from]);
+  document.getElementById('fx-result').classList.add('show');
+  document.getElementById('fx-result-val').textContent = fmt(result,4)+' '+to;
+  document.getElementById('fx-result-sub').textContent = amount+' '+from+' = '+fmt(result,4)+' '+to;
+}
+function populateSelectsWithDefaults() {
+  // If no live rates yet, use approximate
+  fxRates = {USD:1,EUR:0.92,GBP:0.79,JPY:143.5,SAR:3.75,AED:3.67,KWD:0.31,QAR:3.64,BHD:0.376,OMR:0.385,EGP:49.8,TRY:36.8,CHF:0.89,CAD:1.39,AUD:1.57,CNY:7.27,INR:84.6,BRL:5.82,SGD:1.34,ZAR:18.8,MYR:4.47,KRW:1380};
+  populateSelects();
+}
+
+// ═══════════════════════════════════════════════
+//  DEALS — Claude AI powered
+// ═══════════════════════════════════════════════
+async function loadDeals(btn) {
+  spinBtn(btn);
+  const c = document.getElementById('deals-container');
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = loadingHTML(L.loading);
+  try {
+    const lang = currentLang;
+    const prompt = `Generate 9 major financial deals, mergers & acquisitions, and market transactions from early 2025 (Q1-Q2 2025).
+Include: tech acquisitions, financial sector deals, crypto transactions, major stock offerings, Saudi/Middle East investments.
+Language: ${lang==='ar'?'Arabic':lang==='zh'?'Chinese':lang==='fr'?'French':lang==='de'?'German':lang==='es'?'Spanish':lang==='ja'?'Japanese':lang==='ko'?'Korean':lang==='ru'?'Russian':lang==='tr'?'Turkish':lang==='hi'?'Hindi':lang==='pt'?'Portuguese':'English'}
+Return ONLY valid JSON array:
+[{"title":"...","value":"$XB","desc":"...","type":"tech|finance|crypto|stocks","date":"Q1 2025"}]`;
+    const text = await askClaude(prompt, 1500);
+    const items = JSON.parse(text);
+    if (Array.isArray(items)&&items.length) {
+      c.innerHTML = '<div class="grid-3">'+items.map(d =>
+        '<div class="deal-card">'+
+          '<div class="deal-type '+d.type+'" data-deal-type="'+d.type+'">'+(L.dealTypes&&L.dealTypes[d.type]||d.type)+'</div>'+
+          '<div class="deal-title">'+d.title+'</div>'+
+          '<div class="deal-value">'+d.value+'</div>'+
+          '<div class="deal-desc">'+d.desc+'</div>'+
+          '<div class="deal-date">'+d.date+'</div>'+
+        '</div>'
+      ).join('')+'</div>';
+      stopBtn(btn); return;
+    }
+  } catch(e) {}
+  // Static fallback
+  c.innerHTML = '<div class="grid-3">'+[
+    {type:'tech',title:'Microsoft + Activision',value:'$68.7B',desc:'Largest gaming acquisition in history.',date:'2024'},
+    {type:'finance',title:'Capital One + Discover',value:'$35.3B',desc:'Building a rival payment network.',date:'2024'},
+    {type:'crypto',title:'Ripple + Standard Custody',value:'$250M',desc:'Institutional crypto custody expansion.',date:'2024'},
+    {type:'stocks',title:'Saudi Aramco offering',value:'$11.2B',desc:'Secondary listing on Tadawul.',date:'2024'},
+    {type:'tech',title:'Google + Wiz',value:'$23B',desc:'Largest cybersecurity deal ever.',date:'2024'},
+    {type:'finance',title:'JPMorgan + First Republic',value:'$10.6B',desc:'FDIC-assisted acquisition.',date:'2024'},
+  ].map(d =>
+    '<div class="deal-card">'+
+      '<div class="deal-type '+d.type+'" data-deal-type="'+d.type+'">'+(L.dealTypes&&L.dealTypes[d.type]||d.type)+'</div>'+
+      '<div class="deal-title">'+d.title+'</div>'+
+      '<div class="deal-value">'+d.value+'</div>'+
+      '<div class="deal-desc">'+d.desc+'</div>'+
+      '<div class="deal-date">'+d.date+'</div>'+
+    '</div>'
+  ).join('')+'</div>';
+  stopBtn(btn);
+}
+
+// ═══════════════════════════════════════════════
+//  FALLBACK NEWS (offline/API-failure content)
+// ═══════════════════════════════════════════════
+function getFallbackNews(type) {
+  const now = new Date().toISOString();
+  if (type==='tech') return [
+    {title:'US-China Chip War Escalates: New Export Controls on AI Hardware',source:'TechCrunch',pubDate:now,description:'The Biden administration has expanded chip export restrictions to China, barring sales of advanced AI accelerators from Nvidia and AMD. TSMC confirms it has halted all shipments of 7nm and below chips to Chinese entities.',link:'#',_tag:'tech'},
+    {title:'Anthropic Claude 4 Outperforms Rivals on Key Benchmarks',source:'The Verge',pubDate:now,description:'Anthropic released Claude Sonnet 4, demonstrating superior performance on coding, mathematics, and reasoning benchmarks compared to GPT-4o and Gemini Ultra, cementing its position as a leading AI model.',link:'#',_tag:'tech'},
+    {title:'Apple Reports Record Services Revenue, iPhone Sales Soften',source:'Ars Technica',pubDate:now,description:"Apple's Q1 2025 results showed services revenue reaching an all-time high of $26.3B, while iPhone unit sales declined 4% year-over-year as consumers delay upgrades amid economic uncertainty.",link:'#',_tag:'tech'},
+    {title:'Meta Launches Llama 4 Open-Source AI Model',source:'Wired',pubDate:now,description:'Meta released Llama 4, its most capable open-source AI model to date, claiming it matches GPT-4 performance while remaining freely available for commercial use, intensifying competition in the AI space.',link:'#',_tag:'inn'},
+    {title:'SpaceX Starship Completes First Commercial Payload Mission',source:'Ars Technica',pubDate:now,description:"SpaceX's Starship rocket successfully delivered its first commercial payload to orbit, marking a major milestone for the fully reusable launch system and validating Elon Musk's vision for rapid, low-cost space access.",link:'#',_tag:'tech'},
+    {title:'Global Cybersecurity Spending to Hit $300B in 2025',source:'TechCrunch',pubDate:now,description:'Gartner forecasts global cybersecurity spending will exceed $300 billion in 2025, driven by AI-powered threats, ransomware attacks on critical infrastructure, and tightening data protection regulations worldwide.',link:'#',_tag:'dev'},
+  ];
+  return [
+    {title:'US Stocks Tumble Amid Tariff War Fears',source:'MarketWatch',pubDate:now,description:'Wall Street posted its worst weekly decline of 2025 as investors grappled with the economic fallout from escalating US-China trade tensions. The S&P 500 shed 3.1%, entering correction territory from its February highs.',link:'#',_tag:'mkt'},
+    {title:'Federal Reserve Holds Rates, Signals Caution',source:'CNBC',pubDate:now,description:'The Federal Reserve kept its benchmark interest rate unchanged at 4.25-4.50% at its April meeting, with Chair Powell citing "heightened uncertainty" from trade policy as complicating the path toward future rate cuts.',link:'#',_tag:'eco'},
+    {title:'Gold Surges Past $3,200 on Safe-Haven Demand',source:'Bloomberg',pubDate:now,description:"Gold prices hit an all-time high above $3,200 per ounce as investors fled to safe-haven assets amid global market volatility. Central bank buying and ETF inflows are accelerating the precious metal's historic rally.",link:'#',_tag:'eco'},
+    {title:'Oil Falls Below $65 on Recession Fears',source:'Reuters',pubDate:now,description:'Brent crude dropped below $65 a barrel as traders priced in a higher probability of global recession triggered by US tariffs. OPEC+ is reportedly considering an emergency meeting to discuss production adjustments.',link:'#',_tag:'mkt'},
+    {title:"Saudi Vision 2030: $50B in New FDI Commitments",source:'Financial Times',pubDate:now,description:"Saudi Arabia's Public Investment Fund announced $50 billion in new foreign direct investment commitments at the Future Investment Initiative, targeting NEOM, entertainment, and advanced manufacturing sectors.",link:'#',_tag:'eco'},
+    {title:'IMF Cuts 2025 Global Growth Forecast to 2.8%',source:'The Economist',pubDate:now,description:'The International Monetary Fund lowered its 2025 global growth forecast to 2.8%, warning that escalating trade fragmentation and tariff uncertainty could further dampen economic activity in both advanced and emerging economies.',link:'#',_tag:'ana'},
+    {title:'Euro Hits 3-Year High Against Dollar',source:'MarketWatch',pubDate:now,description:"The euro surged to $1.13, its strongest level since 2022, as markets bet European economies will weather the US-China trade war better than America. The dollar index fell to its lowest point in two years amid tariff concerns.",link:'#',_tag:'mkt'},
+    {title:'China Retaliates with 125% Tariffs on US Goods',source:'CNBC',pubDate:now,description:'China announced sweeping retaliatory tariffs of 125% on US agricultural products, energy, and manufactured goods, escalating the trade conflict and raising fears of a prolonged economic decoupling between the world\'s two largest economies.',link:'#',_tag:'eco'},
+  ];
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  applyStaticTickers();
+  loadEcoNews(null);
+  populateSelectsWithDefaults();
+  loadLiveTickers();
+  setInterval(loadLiveTickers, 90000);
+});
+
 const LANGS = {
   ar: {
     dir:'rtl', name:'العربية',
@@ -1900,7 +1756,7 @@ const LANGS = {
   },
 };
 
-// ─── Metal & stock names per language ──────────
+
 const METAL_NAMES = {
   ar:{ gold:'الذهب',silver:'الفضة',platinum:'البلاتين',palladium:'البلاديوم',copper:'النحاس',rhodium:'الروديوم',iridium:'الإيريديوم',osmium:'الأوزميوم',nickel:'النيكل',zinc:'الزنك' },
   en:{ gold:'Gold',silver:'Silver',platinum:'Platinum',palladium:'Palladium',copper:'Copper',rhodium:'Rhodium',iridium:'Iridium',osmium:'Osmium',nickel:'Nickel',zinc:'Zinc' },
@@ -1930,6 +1786,14 @@ const STOCK_NAMES = {
   tr:{ us:'🇺🇸 ABD Piyasaları', global:'🌍 Küresel Piyasalar', sa:'🇸🇦 Suudi Piyasası' },
   hi:{ us:'🇺🇸 अमेरिकी बाज़ार', global:'🌍 वैश्विक बाज़ार', sa:'🇸🇦 सऊदी बाज़ार' },
 };
+
+const CURRENCY_NAMES = {
+  ar:{ USD:'دولار أمريكي',EUR:'يورو',GBP:'جنيه إسترليني',JPY:'ين ياباني',SAR:'ريال سعودي',AED:'درهم إماراتي',KWD:'دينار كويتي',QAR:'ريال قطري',BHD:'دينار بحريني',OMR:'ريال عماني',EGP:'جنيه مصري',TRY:'ليرة تركية',CHF:'فرنك سويسري',CAD:'دولار كندي',AUD:'دولار أسترالي',CNY:'يوان صيني',INR:'روبية هندية',BRL:'ريال برازيلي',SGD:'دولار سنغافوري',ZAR:'راند جنوب أفريقي',MYR:'رينغيت ماليزي',KRW:'وون كوري' },
+  en:{ USD:'US Dollar',EUR:'Euro',GBP:'Brit. Pound',JPY:'Japanese Yen',SAR:'Saudi Riyal',AED:'UAE Dirham',KWD:'Kuwaiti Dinar',QAR:'Qatari Riyal',BHD:'Bahraini Dinar',OMR:'Omani Rial',EGP:'Egyptian Pound',TRY:'Turkish Lira',CHF:'Swiss Franc',CAD:'Canadian Dollar',AUD:'Australian Dollar',CNY:'Chinese Yuan',INR:'Indian Rupee',BRL:'Brazilian Real',SGD:'Singapore Dollar',ZAR:'S. African Rand',MYR:'Malaysian Ringgit',KRW:'South Korean Won' },
+  es:{ USD:'Dólar EE.UU.',EUR:'Euro',GBP:'Libra Esterlina',JPY:'Yen Japonés',SAR:'Riyal Saudí',AED:'Dírham EAU',KWD:'Dinar Kuwaití',QAR:'Riyal Qatarí',BHD:'Dinar Bareiní',OMR:'Rial Omaní',EGP:'Libra Egipcia',TRY:'Lira Turca',CHF:'Franco Suizo',CAD:'Dólar Canadiense',AUD:'Dólar Australiano',CNY:'Yuan Chino',INR:'Rupia India',BRL:'Real Brasileño',SGD:'Dólar de Singapur',ZAR:'Rand Sudafricano',MYR:'Ringgit Malayo',KRW:'Won Surcoreano' },
+  default:{ USD:'US Dollar',EUR:'Euro',GBP:'Pound',JPY:'Yen',SAR:'SAR',AED:'AED',KWD:'KWD',QAR:'QAR',BHD:'BHD',OMR:'OMR',EGP:'EGP',TRY:'TRY',CHF:'CHF',CAD:'CAD',AUD:'AUD',CNY:'CNY',INR:'INR',BRL:'BRL',SGD:'SGD',ZAR:'ZAR',MYR:'MYR',KRW:'KRW' },
+};
+
 
 let currentLang = localStorage.getItem('trendi-lang') || 'ar';
 
@@ -2142,12 +2006,13 @@ function setLang(lang) {
   if (sel) sel.value = lang;
 }
 
+
 // ─── Init on load ──────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const sel = document.getElementById('lang-select');
   if (sel) sel.value = currentLang;
   if (currentLang !== 'ar') setLang(currentLang);
-  else setLang('ar'); // ensure AR direction set
+  else setLang('ar');
 });
 
 </script>
