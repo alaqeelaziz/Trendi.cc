@@ -513,7 +513,7 @@
 
 <!-- ① STOCKS TICKER BAR -->
 <div class="ticker-labeled stocks-bar">
-  <div class="ticker-label">📈 الأسهم العالمية</div>
+  <div class="ticker-label"><span data-i18n="tickerStocks">📈 الأسهم العالمية</span></div>
   <div class="ticker-scroll-wrap">
     <div class="ticker-fade-r"></div>
     <div class="ticker-track-inner" id="stocks-ticker">
@@ -538,7 +538,7 @@
 
 <!-- ② CRYPTO TICKER BAR -->
 <div class="ticker-labeled crypto-bar">
-  <div class="ticker-label">₿ العملات الرقمية</div>
+  <div class="ticker-label"><span data-i18n="tickerCrypto">₿ العملات الرقمية</span></div>
   <div class="ticker-scroll-wrap">
     <div class="ticker-fade-r"></div>
     <div class="ticker-track-inner" id="crypto-ticker">
@@ -665,10 +665,10 @@
       <div id="forex-container"><div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري تحميل أسعار الصرف...</div></div></div>
       <div>
         <div class="converter-card">
-          <div class="converter-title">💱 محوّل العملات</div>
+          <div class="converter-title"><span data-i18n="converterTitle">💱 محوّل العملات</span></div>
           <div class="form-group">
             <label class="form-label">المبلغ</label>
-            <input type="number" class="form-input" id="fx-amount" placeholder="0.00" value="1">
+            <input type="number" class="form-input" id="fx-amount" placeholder="0.00" value="1" data-i18n-placeholder="phAmount">
           </div>
           <div class="form-group">
             <label class="form-label">من</label>
@@ -732,14 +732,14 @@
         <div class="calc-body" id="calc-from-original">
           <div class="form-group">
             <label class="form-label">السعر الأصلي</label>
-            <input type="number" class="form-input" id="orig-price" placeholder="مثلاً: 1000" oninput="calcA()">
+            <input type="number" class="form-input" id="orig-price" placeholder="مثلاً: 1000" data-i18n-placeholder="phOrigPrice" oninput="calcA()">
           </div>
           <div class="form-group">
             <label class="form-label">نسبة الخصم (%)</label>
-            <input type="number" class="form-input" id="orig-pct" placeholder="مثلاً: 20" min="0" max="100" oninput="calcA()">
+            <input type="number" class="form-input" id="orig-pct" placeholder="مثلاً: 20" min="0" max="100" data-i18n-placeholder="phDiscPct" oninput="calcA()">
           </div>
           <div class="calc-result" id="res-a">
-            <div class="result-label">السعر بعد الخصم</div>
+            <div class="result-label" data-i18n="afterDisc">السعر بعد الخصم</div>
             <div class="result-value" id="res-a-val">--</div>
             <div class="result-savings" id="res-a-save"></div>
           </div>
@@ -749,14 +749,14 @@
         <div class="calc-body" style="display:none" id="calc-from-discounted">
           <div class="form-group">
             <label class="form-label">السعر بعد الخصم</label>
-            <input type="number" class="form-input" id="disc-price" placeholder="مثلاً: 800" oninput="calcB()">
+            <input type="number" class="form-input" id="disc-price" placeholder="مثلاً: 800" data-i18n-placeholder="phDiscPrice" oninput="calcB()">
           </div>
           <div class="form-group">
             <label class="form-label">نسبة الخصم المُطبَّقة (%)</label>
-            <input type="number" class="form-input" id="disc-pct" placeholder="مثلاً: 20" min="0" max="99" oninput="calcB()">
+            <input type="number" class="form-input" id="disc-pct" placeholder="مثلاً: 20" min="0" max="99" data-i18n-placeholder="phDiscPctApplied" oninput="calcB()">
           </div>
           <div class="calc-result" id="res-b">
-            <div class="result-label">السعر الأصلي قبل الخصم</div>
+            <div class="result-label" data-i18n="beforeDisc">السعر الأصلي قبل الخصم</div>
             <div class="result-value" id="res-b-val">--</div>
             <div class="result-savings" id="res-b-save"></div>
           </div>
@@ -768,7 +768,7 @@
 </main>
 
 <footer>
-  © 2025 trendi.cc — منصة الأسواق المالية والاقتصادية &nbsp;|&nbsp; البيانات لأغراض معلوماتية فقط
+  <span data-i18n="footer">© 2025 trendi.cc — منصة الأسواق المالية والاقتصادية &nbsp;|&nbsp; البيانات لأغراض معلوماتية فقط</span>
 </footer>
 
 <script>
@@ -948,7 +948,7 @@ async function loadTickerData() {
 async function loadEcoNews(btn) {
   spinBtn(btn);
   const container = document.getElementById('eco-news-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
 
   // Using RSS feeds via rss2json for no-key access
   const sources = [
@@ -982,7 +982,7 @@ async function loadEcoNews(btn) {
 async function loadTechNews(btn) {
   spinBtn(btn);
   const container = document.getElementById('tech-news-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
 
   const sources = [
     { url: 'https://feeds.feedburner.com/TechCrunch', name: 'TechCrunch' },
@@ -1006,38 +1006,41 @@ async function loadTechNews(btn) {
 }
 
 function renderNews(container, items, type='eco') {
-  if (!items.length) { container.innerHTML = '<div class="error-state">⚠️ لم يتم تحميل الأخبار. حاول مرة أخرى.</div>'; return; }
+  const L = LANGS[currentLang] || LANGS.ar;
+  if (!items.length) { container.innerHTML = '<div class="error-state">' + L.errLoad + '</div>'; return; }
   const colors = { Bloomberg:'#6DC328', CNBC:'#e63946', 'Financial Times':'#1e88e5', 'The Economist':'#1565C0', TechCrunch:'#6DC328', 'The Verge':'#1e88e5', Wired:'#90b8d8', 'Hacker News':'#f5c518', default:'#90b8d8' };
-  const tags = { Bloomberg:'اقتصاد', CNBC:'سوق', 'Financial Times':'مال', 'The Economist':'تحليل', TechCrunch:'تقنية', 'The Verge':'تقنية', Wired:'ابتكار', 'Hacker News':'برمجة', default:'خبر' };
-  container.innerHTML = '<div class="news-grid">' + items.map((item, idx) => {
-    const src = item.source || 'Unknown';
-    const ago = item.pubDate ? timeAgo(item.pubDate) : '--';
-    const shortDesc = (item.description||'').replace(/<[^>]+>/g,'').substring(0,130);
-    const fullDesc = (item.description||'').replace(/<[^>]+>/g,'').substring(0,600);
-    const link = item.link||'#';
-    const uid = 'nc-'+Math.random().toString(36).substr(2,8);
-    return `
-      <div class="news-card" id="${uid}" onclick="toggleNewsCard('${uid}','${link.replace(/'/g,"\'")}')">
-        <div class="news-source" style="color:${colors[src]||colors.default}">${src}</div>
-        <div class="news-title">${item.title||'—'}</div>
-        <div class="news-desc news-short">${shortDesc}...</div>
-        <div class="news-full" style="display:none">
-          <p style="font-size:13px;color:var(--text2);line-height:1.7;margin:10px 0">${fullDesc}</p>
-          <a href="${link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" 
-             style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:12px;font-family:var(--mono);text-decoration:none;margin-top:6px">
-            قراءة المقال كاملاً ↗
-          </a>
-        </div>
-        <div class="news-meta" style="margin-top:10px">
-          <span>${ago}</span>
-          <span style="display:flex;align-items:center;gap:6px">
-            <span class="news-tag">${tags[src]||tags.default}</span>
-            <span class="news-expand-icon" style="font-size:11px;color:var(--text3)">＋</span>
-          </span>
-        </div>
-      </div>`;
+  const tagKeys = { Bloomberg:'eco', CNBC:'mkt', 'Financial Times':'fin', 'The Economist':'ana', TechCrunch:'tech', 'The Verge':'tech', Wired:'inn', 'Hacker News':'dev', default:'news' };
+  container.innerHTML = '<div class="news-grid">' + items.map(function(item) {
+    var src = item.source || 'Unknown';
+    var ago = item.pubDate ? timeAgo(item.pubDate) : '--';
+    var shortDesc = (item.description||'').replace(/<[^>]+>/g,'').substring(0,130);
+    var fullDesc = (item.description||'').replace(/<[^>]+>/g,'').substring(0,600);
+    var link = item.link||'#';
+    var uid = 'nc-'+Math.random().toString(36).substr(2,8);
+    var tagKey = tagKeys[src] || tagKeys.default;
+    var tagText = L.newsTag[tagKey] || tagKey;
+    var safeLink = link.replace(/'/g, '%27');
+    return '<div class="news-card" id="' + uid + '" onclick="toggleNewsCard(\'' + uid + '\',\'' + safeLink + '\')">' +
+      '<div class="news-source" style="color:' + (colors[src]||colors.default) + '">' + src + '</div>' +
+      '<div class="news-title">' + (item.title||'—') + '</div>' +
+      '<div class="news-desc news-short">' + shortDesc + '...</div>' +
+      '<div class="news-full" style="display:none">' +
+        '<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:10px 0">' + fullDesc + '</p>' +
+        '<a href="' + link + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-i18n="readMore"' +
+        ' style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:12px;font-family:var(--mono);text-decoration:none;margin-top:6px">' +
+        L.readMore + '</a>' +
+      '</div>' +
+      '<div class="news-meta" style="margin-top:10px">' +
+        '<span>' + ago + '</span>' +
+        '<span style="display:flex;align-items:center;gap:6px">' +
+          '<span class="news-tag" data-tag="' + tagKey + '">' + tagText + '</span>' +
+          '<span class="news-expand-icon" style="font-size:11px;color:var(--text3)">＋</span>' +
+        '</span>' +
+      '</div>' +
+    '</div>';
   }).join('') + '</div>';
 }
+
 
 function toggleNewsCard(uid, link) {
   const card = document.getElementById(uid);
@@ -1082,21 +1085,26 @@ function getFallbackNews(type) {
 async function loadMetals(btn) {
   spinBtn(btn);
   const c = document.getElementById('metals-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
 
   // Using exchangerate-api to get approximate gold prices via FX
   // For actual live metals, we use the free open API
   const metals = await fetchMetalPrices();
-  c.innerHTML = '<div class="grid-4">' + metals.map(m => `
-    <div class="price-card ${m.change>=0?'green':'red'}">
+  const ML = LANGS[currentLang]||LANGS.ar;
+  const mNames = METAL_NAMES[currentLang]||METAL_NAMES.en;
+  c.innerHTML = '<div class="grid-4">' + metals.map(m => {
+    const localName = mNames[m.metalKey] || m.name;
+    const unitLabel = m.metalKey==='copper'||m.metalKey==='nickel'||m.metalKey==='zinc' ? ML.lb : ML.oz;
+    return `<div class="price-card ${m.change>=0?'green':'red'}">
       <div class="card-label">${m.symbol}</div>
-      <div class="card-name">${m.name}</div>
+      <div class="card-name" data-metal="${m.metalKey||''}">${localName}</div>
       <div class="card-price">$${fmt(m.price, m.price>100?2:4)}</div>
       <div class="card-change ${m.change>=0?'up':'dn'}">
         ${m.change>=0?'▲':'▼'} ${Math.abs(m.change).toFixed(2)}%
       </div>
-      <div class="card-unit">${m.unit}</div>
-    </div>`).join('') + '</div>';
+      <div class="card-unit">${unitLabel}</div>
+    </div>`;
+  }).join('') + '</div>';
   stopBtn(btn);
 }
 
@@ -1110,7 +1118,8 @@ async function fetchMetalPrices() {
       const unitMap = { copper:'USD / رطل', default:'USD / أونصة' };
       return d.slice(0,10).map(m => ({
         symbol: (m.metal||'??').toUpperCase().substring(0,3),
-        name: nameMap[m.metal?.toLowerCase()] || m.metal || 'معدن',
+        metalKey: m.metal?.toLowerCase()||'',
+        name: nameMap[m.metal?.toLowerCase()] || m.metal || 'Metal',
         price: parseFloat(m.price)||0,
         change: parseFloat(m.change||m.chg||0),
         unit: unitMap[m.metal?.toLowerCase()] || unitMap.default
@@ -1119,14 +1128,14 @@ async function fetchMetalPrices() {
   } catch(e) {}
   // Fallback — prices accurate as of April 2025
   return [
-    { symbol:'XAU', name:'الذهب', price:3150.00, change:0.82, unit:'USD / أونصة' },
-    { symbol:'XAG', name:'الفضة', price:34.20, change:1.14, unit:'USD / أونصة' },
-    { symbol:'XPT', name:'البلاتين', price:982.00, change:-0.24, unit:'USD / أونصة' },
-    { symbol:'XPD', name:'البلاديوم', price:980.00, change:-0.89, unit:'USD / أونصة' },
-    { symbol:'HG',  name:'النحاس', price:5.08, change:0.56, unit:'USD / رطل' },
-    { symbol:'RHO', name:'الروديوم', price:4600.0, change:0.0, unit:'USD / أونصة' },
-    { symbol:'NI',  name:'النيكل', price:7.42, change:0.31, unit:'USD / رطل' },
-    { symbol:'ZN',  name:'الزنك', price:1.28, change:-0.17, unit:'USD / رطل' },
+    { symbol:'XAU', metalKey:'gold',     name:'Gold',      price:3150.00, change:0.82, unit:'' },
+    { symbol:'XAG', metalKey:'silver',   name:'Silver',    price:34.20,   change:1.14, unit:'' },
+    { symbol:'XPT', metalKey:'platinum', name:'Platinum',  price:982.00,  change:-0.24,unit:'' },
+    { symbol:'XPD', metalKey:'palladium',name:'Palladium', price:980.00,  change:-0.89,unit:'' },
+    { symbol:'HG',  metalKey:'copper',   name:'Copper',    price:5.08,    change:0.56, unit:'' },
+    { symbol:'RHO', metalKey:'rhodium',  name:'Rhodium',   price:4600.0,  change:0.0,  unit:'' },
+    { symbol:'NI',  metalKey:'nickel',   name:'Nickel',    price:7.42,    change:0.31, unit:'' },
+    { symbol:'ZN',  metalKey:'zinc',     name:'Zinc',      price:1.28,    change:-0.17,unit:'' },
   ];
 }
 const metalName = k => ({ gold:'الذهب', silver:'الفضة', platinum:'البلاتين', palladium:'البلاديوم', copper:'النحاس', rhodium:'الروديوم', iridium:'الإيريديوم', osmium:'الأوزميوم' }[k?.toLowerCase()]||k||'معدن');
@@ -1137,15 +1146,14 @@ const metalName = k => ({ gold:'الذهب', silver:'الفضة', platinum:'ال
 async function loadStocks(btn) {
   spinBtn(btn);
   const c = document.getElementById('stocks-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
 
   const markets = await fetchStockIndices();
-  c.innerHTML = '<div style="margin-bottom:20px"><h3 style="font-size:13px;color:var(--text3);margin-bottom:12px">🇺🇸 الأسواق الأمريكية</h3><div class="grid-4">' +
-    markets.us.map(renderPriceCard).join('') + '</div></div>' +
-    '<div style="margin-bottom:20px"><h3 style="font-size:13px;color:var(--text3);margin-bottom:12px">🌍 الأسواق العالمية</h3><div class="grid-4">' +
-    markets.global.map(renderPriceCard).join('') + '</div></div>' +
-    '<div><h3 style="font-size:13px;color:var(--text3);margin-bottom:12px">🇸🇦 سوق تداول السعودي</h3><div class="grid-4">' +
-    markets.sa.map(renderPriceCard).join('') + '</div></div>';
+  const sn = STOCK_NAMES[currentLang]||STOCK_NAMES.en;
+  c.innerHTML =
+    `<div style="margin-bottom:20px"><h3 data-market-label="us" style="font-size:13px;color:var(--text3);margin-bottom:12px">${sn.us}</h3><div class="grid-4">${markets.us.map(renderPriceCard).join('')}</div></div>` +
+    `<div style="margin-bottom:20px"><h3 data-market-label="global" style="font-size:13px;color:var(--text3);margin-bottom:12px">${sn.global}</h3><div class="grid-4">${markets.global.map(renderPriceCard).join('')}</div></div>` +
+    `<div><h3 data-market-label="sa" style="font-size:13px;color:var(--text3);margin-bottom:12px">${sn.sa}</h3><div class="grid-4">${markets.sa.map(renderPriceCard).join('')}</div></div>`;
   stopBtn(btn);
 }
 const renderPriceCard = m => `
@@ -1207,7 +1215,7 @@ const fillFallbackStock = m => m.price!==null ? m : {...m, ...fallbackStocks[m.s
 async function loadCrypto(btn) {
   spinBtn(btn);
   const c = document.getElementById('crypto-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
   try {
     const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=24&page=1&sparkline=false&price_change_percentage=24h');
     const d = await r.json();
@@ -1237,7 +1245,7 @@ async function loadCrypto(btn) {
 async function loadOil(btn) {
   spinBtn(btn);
   const c = document.getElementById('oil-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
   // Use Yahoo Finance for oil futures
   const oils = await fetchOilPrices();
   c.innerHTML = '<div class="grid-4">' + oils.map(renderPriceCard).join('') + '</div>';
@@ -1279,7 +1287,7 @@ const currencies = {
 async function loadForex(btn) {
   spinBtn(btn);
   const c = document.getElementById('forex-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
   try {
     // ExchangeRate-API v4 — official free tier (no key)
     let d = null;
@@ -1346,7 +1354,7 @@ function convertCurrency() {
 async function loadDeals(btn) {
   spinBtn(btn);
   const c = document.getElementById('deals-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">جاري التحميل...</div></div>';
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
 
   // Fetch M&A news from RSS
   let deals = [];
@@ -1379,11 +1387,11 @@ async function loadDeals(btn) {
 
 function getStaticDeals() {
   return [
-    { type:'tech', typeLabel:'تقنية', title:'Microsoft تستحوذ على Activision Blizzard', value:'$68.7 مليار', desc:'أتمّت Microsoft صفقة الاستحواذ على Activision Blizzard في أكبر صفقة في تاريخ صناعة الألعاب.', date:'2024' },
+    { type:'tech', typeLabel:'tech', title:'Microsoft تستحوذ على Activision Blizzard', value:'$68.7 مليار', desc:'أتمّت Microsoft صفقة الاستحواذ على Activision Blizzard في أكبر صفقة في تاريخ صناعة الألعاب.', date:'2024' },
     { type:'finance', typeLabel:'مالية', title:'JP Morgan تستحوذ على First Republic Bank', value:'$10.6 مليار', desc:'استحوذ بنك JP Morgan على First Republic Bank في أعقاب انهياره لحماية المودعين.', date:'2024' },
     { type:'crypto', typeLabel:'رقمية', title:'Ripple تستحوذ على Standard Custody', value:'$250 مليون', desc:'استحوذت Ripple على Standard Custody لتوسيع خدماتها في مجال الحفظ الرقمي المؤسسي.', date:'2024' },
     { type:'stocks', typeLabel:'أسهم', title:'أرامكو تطرح حصة إضافية في السوق', value:'$11.2 مليار', desc:'أتمّت أرامكو السعودية طرحاً ثانوياً ناجحاً في تداول وسط طلب قياسي من المستثمرين الدوليين.', date:'2024' },
-    { type:'tech', typeLabel:'تقنية', title:'Google تستحوذ على Wiz للأمن السحابي', value:'$23 مليار', desc:'أعلنت Google عن استحواذها على شركة Wiz الإسرائيلية للأمن السحابي في أكبر صفقة لها.', date:'2024' },
+    { type:'tech', typeLabel:'tech', title:'Google تستحوذ على Wiz للأمن السحابي', value:'$23 مليار', desc:'أعلنت Google عن استحواذها على شركة Wiz الإسرائيلية للأمن السحابي في أكبر صفقة لها.', date:'2024' },
     { type:'finance', typeLabel:'مالية', title:'Capital One تستحوذ على Discover Financial', value:'$35.3 مليار', desc:'أعلنت Capital One عن صفقة استحواذ ضخمة على Discover Financial لبناء شبكة دفع منافسة.', date:'2024' },
   ];
 }
@@ -1405,7 +1413,7 @@ function calcA() {
   const savings = price - disc;
   document.getElementById('res-a').classList.add('show');
   document.getElementById('res-a-val').textContent = fmt(disc,2);
-  document.getElementById('res-a-save').textContent = `وفّرت: ${fmt(savings,2)} (خصم ${pct}%)`;
+  const La = LANGS[currentLang]||LANGS.ar; document.getElementById('res-a-save').textContent = La.savedTxt(fmt(savings,2), pct);
 }
 function calcB() {
   const disc = parseFloat(document.getElementById('disc-price').value)||0;
@@ -1415,7 +1423,7 @@ function calcB() {
   const savings = orig - disc;
   document.getElementById('res-b').classList.add('show');
   document.getElementById('res-b-val').textContent = fmt(orig,2);
-  document.getElementById('res-b-save').textContent = `قيمة الخصم: ${fmt(savings,2)} (${pct}%)`;
+  const Lb = LANGS[currentLang]||LANGS.ar; document.getElementById('res-b-save').textContent = Lb.discValTxt(fmt(savings,2), pct);
 }
 
 // ═══════════════════════════════════════════════
@@ -1433,222 +1441,502 @@ if (localStorage.getItem('trendi-theme')==='light') {
 }
 
 // ═══════════════════════════════════════════════
-//  LANGUAGE / i18n SYSTEM
+//  FULL i18n SYSTEM — 12 Languages
 // ═══════════════════════════════════════════════
 const LANGS = {
   ar: {
-    dir:'rtl',
+    dir:'rtl', name:'العربية',
     live:'مباشر',
+    tickerStocks:'📈 الأسهم العالمية', tickerCrypto:'₿ العملات الرقمية',
     tabs:['📰 أخبار اقتصادية','🥇 المعادن','📈 الأسهم العالمية','₿ العملات الرقمية','🛢️ النفط','💱 العملات','💻 أخبار تقنية','🤝 الصفقات','🏷️ حاسبة الخصم'],
-    secTitles:['أبرز الأخبار الاقتصادية','أسعار المعادن – بالدولار الأمريكي','مؤشرات الأسواق العالمية','أسعار العملات الرقمية','أسعار النفط والطاقة','أسعار صرف العملات','أبرز الأخبار التقنية','أبرز الصفقات','حاسبة الخصم'],
-    refresh:'تحديث', convert:'تحويل', amount:'المبلغ', from:'من', to:'إلى',
+    secTitles:['أبرز الأخبار الاقتصادية','أسعار المعادن — بالدولار الأمريكي','مؤشرات الأسواق العالمية','أسعار العملات الرقمية','أسعار النفط والطاقة','أسعار صرف العملات','أبرز الأخبار التقنية','أبرز الصفقات','حاسبة الخصم'],
+    refresh:'تحديث', converterTitle:'💱 محوّل العملات',
+    amount:'المبلغ', from:'من', to:'إلى', convert:'تحويل',
     calcTab1:'السعر الأصلي → بعد الخصم', calcTab2:'بعد الخصم → السعر الأصلي',
     origPrice:'السعر الأصلي', discPct:'نسبة الخصم (%)',
     discPrice:'السعر بعد الخصم', discPctApplied:'نسبة الخصم المُطبَّقة (%)',
     afterDisc:'السعر بعد الخصم', beforeDisc:'السعر الأصلي قبل الخصم',
-    loading:'جاري التحميل...', footer:'بيانات للأغراض المعلوماتية فقط'
+    phOrigPrice:'مثلاً: 1000', phDiscPct:'مثلاً: 20',
+    phDiscPrice:'مثلاً: 800', phDiscPctApplied:'مثلاً: 20', phAmount:'0.00',
+    footer:'© 2025 trendi.cc — منصة الأسواق المالية | البيانات لأغراض معلوماتية فقط',
+    newsTag:{ eco:'اقتصاد', mkt:'سوق', fin:'مال', ana:'تحليل', tech:'تقنية', inn:'ابتكار', dev:'برمجة', news:'خبر' },
+    readMore:'قراءة المقال كاملاً ↗',
+    usMarkets:'🇺🇸 الأسواق الأمريكية', globalMarkets:'🌍 الأسواق العالمية', saMarket:'🇸🇦 سوق تداول السعودي',
+    pt:'نقطة', rial:'ريال', oz:'USD / أونصة', lb:'USD / رطل',
+    loading:'جاري التحميل...', errLoad:'⚠️ تعذّر التحميل. حاول مرة أخرى.',
+    dealTypes:{ tech:'تقنية', finance:'مالية', crypto:'رقمية', stocks:'أسهم' },
+    readFull:'قراءة المقال ↗',
+    savedTxt: (s,p) => `وفّرت: ${s} (خصم ${p}%)`,
+    discValTxt: (s,p) => `قيمة الخصم: ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   en: {
-    dir:'ltr',
+    dir:'ltr', name:'English',
     live:'LIVE',
+    tickerStocks:'📈 Global Stocks', tickerCrypto:'₿ Cryptocurrency',
     tabs:['📰 Eco News','🥇 Metals','📈 Global Stocks','₿ Crypto','🛢️ Oil','💱 Forex','💻 Tech News','🤝 Deals','🏷️ Discount Calc'],
-    secTitles:['Top Economic News','Metal Prices – USD per Oz','Global Market Indices','Cryptocurrency Prices','Oil & Energy Prices','Currency Exchange Rates','Top Tech News','Major Deals','Discount Calculator'],
-    refresh:'Refresh', convert:'Convert', amount:'Amount', from:'From', to:'To',
-    calcTab1:'Original → After Discount', calcTab2:'After Discount → Original Price',
+    secTitles:['Top Economic News','Metal Prices — USD per Oz','Global Market Indices','Cryptocurrency Prices','Oil & Energy Prices','Currency Exchange Rates','Top Tech News','Major Deals','Discount Calculator'],
+    refresh:'Refresh', converterTitle:'💱 Currency Converter',
+    amount:'Amount', from:'From', to:'To', convert:'Convert',
+    calcTab1:'Original Price → After Discount', calcTab2:'After Discount → Original Price',
     origPrice:'Original Price', discPct:'Discount (%)',
     discPrice:'Discounted Price', discPctApplied:'Discount Applied (%)',
     afterDisc:'Price After Discount', beforeDisc:'Original Price Before Discount',
-    loading:'Loading...', footer:'Data for informational purposes only'
+    phOrigPrice:'e.g. 1000', phDiscPct:'e.g. 20',
+    phDiscPrice:'e.g. 800', phDiscPctApplied:'e.g. 20', phAmount:'0.00',
+    footer:'© 2025 trendi.cc — Financial Markets Platform | Data for informational purposes only',
+    newsTag:{ eco:'Economy', mkt:'Market', fin:'Finance', ana:'Analysis', tech:'Tech', inn:'Innovation', dev:'Dev', news:'News' },
+    readMore:'Read full article ↗',
+    usMarkets:'🇺🇸 US Markets', globalMarkets:'🌍 Global Markets', saMarket:'🇸🇦 Saudi Tadawul',
+    pt:'pts', rial:'SAR', oz:'USD / oz', lb:'USD / lb',
+    loading:'Loading...', errLoad:'⚠️ Failed to load. Please try again.',
+    dealTypes:{ tech:'Tech', finance:'Finance', crypto:'Crypto', stocks:'Stocks' },
+    readFull:'Read Article ↗',
+    savedTxt: (s,p) => `You save: ${s} (${p}% off)`,
+    discValTxt: (s,p) => `Discount value: ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   es: {
-    dir:'ltr',
+    dir:'ltr', name:'Español',
     live:'EN VIVO',
+    tickerStocks:'📈 Bolsas Globales', tickerCrypto:'₿ Criptomonedas',
     tabs:['📰 Noticias Eco','🥇 Metales','📈 Bolsas','₿ Cripto','🛢️ Petróleo','💱 Divisas','💻 Tecnología','🤝 Acuerdos','🏷️ Descuento'],
     secTitles:['Noticias Económicas','Precios de Metales','Índices Bursátiles','Criptomonedas','Precios del Petróleo','Tipos de Cambio','Noticias Tecnológicas','Principales Acuerdos','Calculadora de Descuento'],
-    refresh:'Actualizar', convert:'Convertir', amount:'Cantidad', from:'De', to:'A',
+    refresh:'Actualizar', converterTitle:'💱 Convertidor de Divisas',
+    amount:'Cantidad', from:'De', to:'A', convert:'Convertir',
     calcTab1:'Precio Original → Con Descuento', calcTab2:'Con Descuento → Precio Original',
     origPrice:'Precio Original', discPct:'Descuento (%)',
     discPrice:'Precio con Descuento', discPctApplied:'Descuento Aplicado (%)',
     afterDisc:'Precio con Descuento', beforeDisc:'Precio Original antes del Descuento',
-    loading:'Cargando...', footer:'Datos solo informativos'
+    phOrigPrice:'ej. 1000', phDiscPct:'ej. 20',
+    phDiscPrice:'ej. 800', phDiscPctApplied:'ej. 20', phAmount:'0.00',
+    footer:'© 2025 trendi.cc — Plataforma de Mercados Financieros | Datos solo informativos',
+    newsTag:{ eco:'Economía', mkt:'Mercado', fin:'Finanzas', ana:'Análisis', tech:'Tech', inn:'Innovación', dev:'Dev', news:'Noticia' },
+    readMore:'Leer artículo completo ↗',
+    usMarkets:'🇺🇸 Mercados EE.UU.', globalMarkets:'🌍 Mercados Globales', saMarket:'🇸🇦 Bolsa Saudí',
+    pt:'pts', rial:'SAR', oz:'USD / oz', lb:'USD / lb',
+    loading:'Cargando...', errLoad:'⚠️ Error al cargar. Inténtalo de nuevo.',
+    dealTypes:{ tech:'Tecnología', finance:'Finanzas', crypto:'Cripto', stocks:'Acciones' },
+    readFull:'Leer Artículo ↗',
+    savedTxt: (s,p) => `Ahorras: ${s} (${p}% dto.)`,
+    discValTxt: (s,p) => `Valor del descuento: ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   zh: {
-    dir:'ltr',
+    dir:'ltr', name:'中文',
     live:'实时',
+    tickerStocks:'📈 全球股市', tickerCrypto:'₿ 加密货币',
     tabs:['📰 经济新闻','🥇 金属','📈 全球股市','₿ 加密货币','🛢️ 原油','💱 外汇','💻 科技新闻','🤝 交易','🏷️ 折扣计算'],
-    secTitles:['主要经济新闻','金属价格 – 美元/盎司','全球市场指数','加密货币价格','石油和能源价格','汇率','主要科技新闻','重大交易','折扣计算器'],
-    refresh:'刷新', convert:'转换', amount:'金额', from:'从', to:'到',
+    secTitles:['主要经济新闻','金属价格 — 美元/盎司','全球市场指数','加密货币价格','石油和能源价格','汇率','主要科技新闻','重大交易','折扣计算器'],
+    refresh:'刷新', converterTitle:'💱 货币换算器',
+    amount:'金额', from:'从', to:'到', convert:'转换',
     calcTab1:'原价 → 折后价', calcTab2:'折后价 → 原价',
     origPrice:'原价', discPct:'折扣 (%)',
     discPrice:'折后价格', discPctApplied:'应用折扣 (%)',
     afterDisc:'折后价格', beforeDisc:'折扣前原价',
-    loading:'加载中...', footer:'数据仅供参考'
+    phOrigPrice:'例：1000', phDiscPct:'例：20',
+    phDiscPrice:'例：800', phDiscPctApplied:'例：20', phAmount:'0.00',
+    footer:'© 2025 trendi.cc — 金融市场平台 | 数据仅供参考',
+    newsTag:{ eco:'经济', mkt:'市场', fin:'金融', ana:'分析', tech:'科技', inn:'创新', dev:'开发', news:'新闻' },
+    readMore:'阅读全文 ↗',
+    usMarkets:'🇺🇸 美国市场', globalMarkets:'🌍 全球市场', saMarket:'🇸🇦 沙特市场',
+    pt:'点', rial:'里亚尔', oz:'美元/盎司', lb:'美元/磅',
+    loading:'加载中...', errLoad:'⚠️ 加载失败，请重试。',
+    dealTypes:{ tech:'科技', finance:'金融', crypto:'加密', stocks:'股票' },
+    readFull:'阅读文章 ↗',
+    savedTxt: (s,p) => `节省：${s}（${p}%折扣）`,
+    discValTxt: (s,p) => `折扣金额：${s}（${p}%）`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   fr: {
-    dir:'ltr',
+    dir:'ltr', name:'Français',
     live:'EN DIRECT',
+    tickerStocks:'📈 Marchés Mondiaux', tickerCrypto:'₿ Cryptomonnaies',
     tabs:['📰 Éco Actualités','🥇 Métaux','📈 Marchés Mondiaux','₿ Crypto','🛢️ Pétrole','💱 Devises','💻 Tech Actualités','🤝 Accords','🏷️ Remise'],
     secTitles:['Actualités Économiques','Prix des Métaux','Indices Boursiers Mondiaux','Cryptomonnaies','Prix du Pétrole','Taux de Change','Actualités Technologiques','Principaux Accords','Calculateur de Remise'],
-    refresh:'Actualiser', convert:'Convertir', amount:'Montant', from:'De', to:'Vers',
+    refresh:'Actualiser', converterTitle:'💱 Convertisseur de Devises',
+    amount:'Montant', from:'De', to:'Vers', convert:'Convertir',
     calcTab1:'Prix Original → Après Remise', calcTab2:'Après Remise → Prix Original',
     origPrice:'Prix Original', discPct:'Remise (%)',
     discPrice:'Prix Remisé', discPctApplied:'Remise Appliquée (%)',
     afterDisc:'Prix après Remise', beforeDisc:'Prix Original avant Remise',
-    loading:'Chargement...', footer:'Données à titre informatif uniquement'
+    phOrigPrice:'ex. 1000', phDiscPct:'ex. 20',
+    phDiscPrice:'ex. 800', phDiscPctApplied:'ex. 20', phAmount:'0,00',
+    footer:'© 2025 trendi.cc — Plateforme des Marchés Financiers | Données à titre informatif',
+    newsTag:{ eco:'Économie', mkt:'Marché', fin:'Finance', ana:'Analyse', tech:'Tech', inn:'Innovation', dev:'Dev', news:'Actualité' },
+    readMore:'Lire l\'article complet ↗',
+    usMarkets:'🇺🇸 Marchés US', globalMarkets:'🌍 Marchés Mondiaux', saMarket:'🇸🇦 Bourse Saoudienne',
+    pt:'pts', rial:'SAR', oz:'USD / oz', lb:'USD / lb',
+    loading:'Chargement...', errLoad:'⚠️ Échec du chargement. Réessayez.',
+    dealTypes:{ tech:'Tech', finance:'Finance', crypto:'Crypto', stocks:'Actions' },
+    readFull:'Lire l\'Article ↗',
+    savedTxt: (s,p) => `Vous économisez : ${s} (${p}%)`,
+    discValTxt: (s,p) => `Valeur de la remise : ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   de: {
-    dir:'ltr',
+    dir:'ltr', name:'Deutsch',
     live:'LIVE',
+    tickerStocks:'📈 Weltmärkte', tickerCrypto:'₿ Kryptowährungen',
     tabs:['📰 Wirtschaft','🥇 Metalle','📈 Weltmärkte','₿ Krypto','🛢️ Öl','💱 Devisen','💻 Tech News','🤝 Deals','🏷️ Rabatt'],
     secTitles:['Wirtschaftsnachrichten','Metallpreise','Weltmarktindizes','Kryptowährungen','Öl & Energie','Wechselkurse','Tech Nachrichten','Wichtige Deals','Rabattrechner'],
-    refresh:'Aktualisieren', convert:'Umrechnen', amount:'Betrag', from:'Von', to:'Nach',
+    refresh:'Aktualisieren', converterTitle:'💱 Währungsrechner',
+    amount:'Betrag', from:'Von', to:'Nach', convert:'Umrechnen',
     calcTab1:'Originalpreis → Nach Rabatt', calcTab2:'Nach Rabatt → Originalpreis',
     origPrice:'Originalpreis', discPct:'Rabatt (%)',
     discPrice:'Preis nach Rabatt', discPctApplied:'Angewendeter Rabatt (%)',
     afterDisc:'Preis nach Rabatt', beforeDisc:'Originalpreis vor Rabatt',
-    loading:'Laden...', footer:'Daten nur zu Informationszwecken'
+    phOrigPrice:'z.B. 1000', phDiscPct:'z.B. 20',
+    phDiscPrice:'z.B. 800', phDiscPctApplied:'z.B. 20', phAmount:'0,00',
+    footer:'© 2025 trendi.cc — Finanzmarktplattform | Daten nur zu Informationszwecken',
+    newsTag:{ eco:'Wirtschaft', mkt:'Markt', fin:'Finanzen', ana:'Analyse', tech:'Tech', inn:'Innovation', dev:'Entwicklung', news:'Nachricht' },
+    readMore:'Vollständigen Artikel lesen ↗',
+    usMarkets:'🇺🇸 US-Märkte', globalMarkets:'🌍 Weltmärkte', saMarket:'🇸🇦 Saudi-Börse',
+    pt:'Pkt.', rial:'SAR', oz:'USD / Unze', lb:'USD / lb',
+    loading:'Laden...', errLoad:'⚠️ Laden fehlgeschlagen. Bitte erneut versuchen.',
+    dealTypes:{ tech:'Tech', finance:'Finanzen', crypto:'Krypto', stocks:'Aktien' },
+    readFull:'Artikel lesen ↗',
+    savedTxt: (s,p) => `Sie sparen: ${s} (${p}% Rabatt)`,
+    discValTxt: (s,p) => `Rabattwert: ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   ja: {
-    dir:'ltr',
+    dir:'ltr', name:'日本語',
     live:'ライブ',
-    tabs:['📰 経済ニュース','🥇 金属','📈 世界株式','₿ 仮想通貨','🛢️ 石油','💱 外国為替','💻 テクノロジー','🤝 取引','🏷️ 割引計算'],
+    tickerStocks:'📈 世界株式', tickerCrypto:'₿ 仮想通貨',
+    tabs:['📰 経済ニュース','🥇 金属','📈 世界株式','₿ 仮想通貨','🛢️ 石油','💱 為替','💻 テクノロジー','🤝 取引','🏷️ 割引計算'],
     secTitles:['主要経済ニュース','金属価格','世界市場指数','暗号通貨価格','石油・エネルギー価格','為替レート','テクノロジーニュース','主要取引','割引計算機'],
-    refresh:'更新', convert:'変換', amount:'金額', from:'から', to:'へ',
+    refresh:'更新', converterTitle:'💱 通貨換算',
+    amount:'金額', from:'から', to:'へ', convert:'変換',
     calcTab1:'元値 → 割引後', calcTab2:'割引後 → 元値',
     origPrice:'元値', discPct:'割引率 (%)',
     discPrice:'割引後価格', discPctApplied:'適用割引率 (%)',
     afterDisc:'割引後価格', beforeDisc:'割引前の元値',
-    loading:'読み込み中...', footer:'データは情報提供のみ'
+    phOrigPrice:'例：1000', phDiscPct:'例：20',
+    phDiscPrice:'例：800', phDiscPctApplied:'例：20', phAmount:'0.00',
+    footer:'© 2025 trendi.cc — 金融市場プラットフォーム | データは情報提供のみ',
+    newsTag:{ eco:'経済', mkt:'市場', fin:'金融', ana:'分析', tech:'テック', inn:'革新', dev:'開発', news:'ニュース' },
+    readMore:'全文を読む ↗',
+    usMarkets:'🇺🇸 米国市場', globalMarkets:'🌍 世界市場', saMarket:'🇸🇦 サウジ市場',
+    pt:'ポイント', rial:'SAR', oz:'USD/オンス', lb:'USD/ポンド',
+    loading:'読み込み中...', errLoad:'⚠️ 読み込みに失敗しました。',
+    dealTypes:{ tech:'テック', finance:'金融', crypto:'暗号資産', stocks:'株式' },
+    readFull:'記事を読む ↗',
+    savedTxt: (s,p) => `節約額：${s}（${p}%割引）`,
+    discValTxt: (s,p) => `割引額：${s}（${p}%）`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   ko: {
-    dir:'ltr',
+    dir:'ltr', name:'한국어',
     live:'실시간',
+    tickerStocks:'📈 글로벌 주식', tickerCrypto:'₿ 암호화폐',
     tabs:['📰 경제 뉴스','🥇 금속','📈 글로벌 주식','₿ 암호화폐','🛢️ 원유','💱 외환','💻 기술 뉴스','🤝 딜','🏷️ 할인 계산'],
     secTitles:['주요 경제 뉴스','금속 가격','글로벌 시장 지수','암호화폐 가격','석유 및 에너지 가격','환율','기술 뉴스','주요 거래','할인 계산기'],
-    refresh:'새로고침', convert:'변환', amount:'금액', from:'에서', to:'로',
+    refresh:'새로고침', converterTitle:'💱 환율 계산기',
+    amount:'금액', from:'에서', to:'로', convert:'변환',
     calcTab1:'원래 가격 → 할인 후', calcTab2:'할인 후 → 원래 가격',
     origPrice:'원래 가격', discPct:'할인율 (%)',
     discPrice:'할인된 가격', discPctApplied:'적용된 할인율 (%)',
     afterDisc:'할인 후 가격', beforeDisc:'할인 전 원래 가격',
-    loading:'로딩 중...', footer:'데이터는 정보 제공 목적으로만 사용'
+    phOrigPrice:'예：1000', phDiscPct:'예：20',
+    phDiscPrice:'예：800', phDiscPctApplied:'예：20', phAmount:'0.00',
+    footer:'© 2025 trendi.cc — 금융 시장 플랫폼 | 데이터는 정보 제공 목적',
+    newsTag:{ eco:'경제', mkt:'시장', fin:'금융', ana:'분석', tech:'기술', inn:'혁신', dev:'개발', news:'뉴스' },
+    readMore:'전체 기사 읽기 ↗',
+    usMarkets:'🇺🇸 미국 시장', globalMarkets:'🌍 글로벌 시장', saMarket:'🇸🇦 사우디 시장',
+    pt:'포인트', rial:'SAR', oz:'USD/온스', lb:'USD/파운드',
+    loading:'로딩 중...', errLoad:'⚠️ 로드 실패. 다시 시도하세요.',
+    dealTypes:{ tech:'기술', finance:'금융', crypto:'암호화폐', stocks:'주식' },
+    readFull:'기사 읽기 ↗',
+    savedTxt: (s,p) => `절약: ${s} (${p}% 할인)`,
+    discValTxt: (s,p) => `할인 금액: ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   pt: {
-    dir:'ltr',
+    dir:'ltr', name:'Português',
     live:'AO VIVO',
+    tickerStocks:'📈 Ações Globais', tickerCrypto:'₿ Criptomoedas',
     tabs:['📰 Econômico','🥇 Metais','📈 Ações Globais','₿ Cripto','🛢️ Petróleo','💱 Câmbio','💻 Tecnologia','🤝 Negócios','🏷️ Desconto'],
     secTitles:['Notícias Econômicas','Preços dos Metais','Índices Globais','Criptomoedas','Preços do Petróleo','Taxas de Câmbio','Notícias de Tecnologia','Principais Negócios','Calculadora de Desconto'],
-    refresh:'Atualizar', convert:'Converter', amount:'Valor', from:'De', to:'Para',
+    refresh:'Atualizar', converterTitle:'💱 Conversor de Moedas',
+    amount:'Valor', from:'De', to:'Para', convert:'Converter',
     calcTab1:'Preço Original → Com Desconto', calcTab2:'Com Desconto → Preço Original',
     origPrice:'Preço Original', discPct:'Desconto (%)',
     discPrice:'Preço com Desconto', discPctApplied:'Desconto Aplicado (%)',
     afterDisc:'Preço com Desconto', beforeDisc:'Preço Original antes do Desconto',
-    loading:'Carregando...', footer:'Dados apenas para fins informativos'
+    phOrigPrice:'ex. 1000', phDiscPct:'ex. 20',
+    phDiscPrice:'ex. 800', phDiscPctApplied:'ex. 20', phAmount:'0,00',
+    footer:'© 2025 trendi.cc — Plataforma de Mercados Financeiros | Dados apenas informativos',
+    newsTag:{ eco:'Economia', mkt:'Mercado', fin:'Finanças', ana:'Análise', tech:'Tech', inn:'Inovação', dev:'Dev', news:'Notícia' },
+    readMore:'Ler artigo completo ↗',
+    usMarkets:'🇺🇸 Mercados EUA', globalMarkets:'🌍 Mercados Globais', saMarket:'🇸🇦 Bolsa Saudita',
+    pt:'pts', rial:'SAR', oz:'USD/oz', lb:'USD/lb',
+    loading:'Carregando...', errLoad:'⚠️ Falha ao carregar. Tente novamente.',
+    dealTypes:{ tech:'Tecnologia', finance:'Finanças', crypto:'Cripto', stocks:'Ações' },
+    readFull:'Ler Artigo ↗',
+    savedTxt: (s,p) => `Você economiza: ${s} (${p}%)`,
+    discValTxt: (s,p) => `Valor do desconto: ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   ru: {
-    dir:'ltr',
+    dir:'ltr', name:'Русский',
     live:'ПРЯМОЙ ЭФИР',
-    tabs:['📰 Экономика','🥇 Металлы','📈 Мировые акции','₿ Крипто','🛢️ Нефть','💱 Валюты','💻 Технологии','🤝 Сделки','🏷️ Скидки'],
+    tickerStocks:'📈 Мировые Акции', tickerCrypto:'₿ Криптовалюты',
+    tabs:['📰 Экономика','🥇 Металлы','📈 Мировые Акции','₿ Крипто','🛢️ Нефть','💱 Валюты','💻 Технологии','🤝 Сделки','🏷️ Скидки'],
     secTitles:['Экономические новости','Цены на металлы','Мировые индексы','Криптовалюты','Нефть и энергетика','Обменные курсы','Технологические новости','Крупные сделки','Калькулятор скидок'],
-    refresh:'Обновить', convert:'Конвертировать', amount:'Сумма', from:'Из', to:'В',
+    refresh:'Обновить', converterTitle:'💱 Конвертер валют',
+    amount:'Сумма', from:'Из', to:'В', convert:'Конвертировать',
     calcTab1:'Исходная цена → После скидки', calcTab2:'После скидки → Исходная цена',
     origPrice:'Исходная цена', discPct:'Скидка (%)',
     discPrice:'Цена после скидки', discPctApplied:'Применённая скидка (%)',
     afterDisc:'Цена после скидки', beforeDisc:'Исходная цена до скидки',
-    loading:'Загрузка...', footer:'Данные только в информационных целях'
+    phOrigPrice:'напр. 1000', phDiscPct:'напр. 20',
+    phDiscPrice:'напр. 800', phDiscPctApplied:'напр. 20', phAmount:'0.00',
+    footer:'© 2025 trendi.cc — Платформа финансовых рынков | Данные только для информации',
+    newsTag:{ eco:'Экономика', mkt:'Рынок', fin:'Финансы', ana:'Анализ', tech:'Технологии', inn:'Инновации', dev:'Разработка', news:'Новость' },
+    readMore:'Читать полностью ↗',
+    usMarkets:'🇺🇸 Рынки США', globalMarkets:'🌍 Мировые рынки', saMarket:'🇸🇦 Саудовский рынок',
+    pt:'пунктов', rial:'SAR', oz:'USD/унция', lb:'USD/фунт',
+    loading:'Загрузка...', errLoad:'⚠️ Ошибка загрузки. Попробуйте снова.',
+    dealTypes:{ tech:'Технологии', finance:'Финансы', crypto:'Крипто', stocks:'Акции' },
+    readFull:'Читать статью ↗',
+    savedTxt: (s,p) => `Экономия: ${s} (скидка ${p}%)`,
+    discValTxt: (s,p) => `Размер скидки: ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   tr: {
-    dir:'ltr',
+    dir:'ltr', name:'Türkçe',
     live:'CANLI',
+    tickerStocks:'📈 Küresel Hisseler', tickerCrypto:'₿ Kripto Paralar',
     tabs:['📰 Ekonomi','🥇 Metaller','📈 Küresel Hisseler','₿ Kripto','🛢️ Petrol','💱 Döviz','💻 Teknoloji','🤝 Anlaşmalar','🏷️ İndirim'],
     secTitles:['Ekonomi Haberleri','Metal Fiyatları','Küresel Endeksler','Kripto Para Fiyatları','Petrol ve Enerji','Döviz Kurları','Teknoloji Haberleri','Önemli Anlaşmalar','İndirim Hesaplayıcı'],
-    refresh:'Yenile', convert:'Dönüştür', amount:'Miktar', from:'Kaynak', to:'Hedef',
+    refresh:'Yenile', converterTitle:'💱 Döviz Çevirici',
+    amount:'Miktar', from:'Kaynak', to:'Hedef', convert:'Dönüştür',
     calcTab1:'Orijinal Fiyat → İndirimli', calcTab2:'İndirimli → Orijinal Fiyat',
     origPrice:'Orijinal Fiyat', discPct:'İndirim (%)',
     discPrice:'İndirimli Fiyat', discPctApplied:'Uygulanan İndirim (%)',
     afterDisc:'İndirimli Fiyat', beforeDisc:'İndirim Öncesi Orijinal Fiyat',
-    loading:'Yükleniyor...', footer:'Veriler yalnızca bilgi amaçlıdır'
+    phOrigPrice:'örn. 1000', phDiscPct:'örn. 20',
+    phDiscPrice:'örn. 800', phDiscPctApplied:'örn. 20', phAmount:'0,00',
+    footer:'© 2025 trendi.cc — Finansal Piyasalar Platformu | Veriler yalnızca bilgi amaçlıdır',
+    newsTag:{ eco:'Ekonomi', mkt:'Piyasa', fin:'Finans', ana:'Analiz', tech:'Teknoloji', inn:'İnovasyon', dev:'Geliştirme', news:'Haber' },
+    readMore:'Tam makaleyi oku ↗',
+    usMarkets:'🇺🇸 ABD Piyasaları', globalMarkets:'🌍 Küresel Piyasalar', saMarket:'🇸🇦 Suudi Piyasası',
+    pt:'puan', rial:'SAR', oz:'USD/ons', lb:'USD/lb',
+    loading:'Yükleniyor...', errLoad:'⚠️ Yükleme başarısız. Tekrar deneyin.',
+    dealTypes:{ tech:'Teknoloji', finance:'Finans', crypto:'Kripto', stocks:'Hisseler' },
+    readFull:'Makaleyi Oku ↗',
+    savedTxt: (s,p) => `Tasarruf: ${s} (%${p} indirim)`,
+    discValTxt: (s,p) => `İndirim tutarı: ${s} (%${p})`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
   },
   hi: {
-    dir:'ltr',
+    dir:'ltr', name:'हिंदी',
     live:'लाइव',
+    tickerStocks:'📈 वैश्विक शेयर', tickerCrypto:'₿ क्रिप्टोकरेंसी',
     tabs:['📰 आर्थिक समाचार','🥇 धातु','📈 वैश्विक शेयर','₿ क्रिप्टो','🛢️ तेल','💱 मुद्रा','💻 तकनीक','🤝 सौदे','🏷️ छूट'],
     secTitles:['प्रमुख आर्थिक समाचार','धातु मूल्य','वैश्विक बाज़ार सूचकांक','क्रिप्टोकरेंसी मूल्य','तेल और ऊर्जा मूल्य','विनिमय दरें','प्रमुख तकनीकी समाचार','प्रमुख सौदे','छूट कैलकुलेटर'],
-    refresh:'ताज़ा करें', convert:'परिवर्तित करें', amount:'राशि', from:'से', to:'तक',
+    refresh:'ताज़ा करें', converterTitle:'💱 मुद्रा परिवर्तक',
+    amount:'राशि', from:'से', to:'तक', convert:'परिवर्तित करें',
     calcTab1:'मूल मूल्य → छूट के बाद', calcTab2:'छूट के बाद → मूल मूल्य',
     origPrice:'मूल मूल्य', discPct:'छूट (%)',
     discPrice:'छूट के बाद मूल्य', discPctApplied:'लागू छूट (%)',
     afterDisc:'छूट के बाद मूल्य', beforeDisc:'छूट से पहले मूल मूल्य',
-    loading:'लोड हो रहा है...', footer:'डेटा केवल सूचना उद्देश्यों के लिए'
-  }
+    phOrigPrice:'उदा. 1000', phDiscPct:'उदा. 20',
+    phDiscPrice:'उदा. 800', phDiscPctApplied:'उदा. 20', phAmount:'0.00',
+    footer:'© 2025 trendi.cc — वित्तीय बाज़ार प्लेटफ़ॉर्म | डेटा केवल सूचना उद्देश्यों के लिए',
+    newsTag:{ eco:'अर्थव्यवस्था', mkt:'बाज़ार', fin:'वित्त', ana:'विश्लेषण', tech:'तकनीक', inn:'नवाचार', dev:'विकास', news:'समाचार' },
+    readMore:'पूरा लेख पढ़ें ↗',
+    usMarkets:'🇺🇸 अमेरिकी बाज़ार', globalMarkets:'🌍 वैश्विक बाज़ार', saMarket:'🇸🇦 सऊदी बाज़ार',
+    pt:'अंक', rial:'SAR', oz:'USD/औंस', lb:'USD/पाउंड',
+    loading:'लोड हो रहा है...', errLoad:'⚠️ लोड विफल। पुनः प्रयास करें।',
+    dealTypes:{ tech:'तकनीक', finance:'वित्त', crypto:'क्रिप्टो', stocks:'शेयर' },
+    readFull:'लेख पढ़ें ↗',
+    savedTxt: (s,p) => `बचत: ${s} (${p}% छूट)`,
+    discValTxt: (s,p) => `छूट राशि: ${s} (${p}%)`,
+    fxNote: (a,f,r,t) => `${a} ${f} = ${r} ${t}`,
+    newsEcoQuery:'economic finance news', newsTechQuery:'technology news',
+  },
+};
+
+// ─── Metal & stock names per language ──────────
+const METAL_NAMES = {
+  ar:{ gold:'الذهب',silver:'الفضة',platinum:'البلاتين',palladium:'البلاديوم',copper:'النحاس',rhodium:'الروديوم',iridium:'الإيريديوم',osmium:'الأوزميوم',nickel:'النيكل',zinc:'الزنك' },
+  en:{ gold:'Gold',silver:'Silver',platinum:'Platinum',palladium:'Palladium',copper:'Copper',rhodium:'Rhodium',iridium:'Iridium',osmium:'Osmium',nickel:'Nickel',zinc:'Zinc' },
+  es:{ gold:'Oro',silver:'Plata',platinum:'Platino',palladium:'Paladio',copper:'Cobre',rhodium:'Rodio',iridium:'Iridio',osmium:'Osmio',nickel:'Níquel',zinc:'Zinc' },
+  zh:{ gold:'黄金',silver:'白银',platinum:'铂金',palladium:'钯',copper:'铜',rhodium:'铑',iridium:'铱',osmium:'锇',nickel:'镍',zinc:'锌' },
+  fr:{ gold:'Or',silver:'Argent',platinum:'Platine',palladium:'Palladium',copper:'Cuivre',rhodium:'Rhodium',iridium:'Iridium',osmium:'Osmium',nickel:'Nickel',zinc:'Zinc' },
+  de:{ gold:'Gold',silver:'Silber',platinum:'Platin',palladium:'Palladium',copper:'Kupfer',rhodium:'Rhodium',iridium:'Iridium',osmium:'Osmium',nickel:'Nickel',zinc:'Zink' },
+  ja:{ gold:'金',silver:'銀',platinum:'プラチナ',palladium:'パラジウム',copper:'銅',rhodium:'ロジウム',iridium:'イリジウム',osmium:'オスミウム',nickel:'ニッケル',zinc:'亜鉛' },
+  ko:{ gold:'금',silver:'은',platinum:'백금',palladium:'팔라듐',copper:'구리',rhodium:'로듐',iridium:'이리듐',osmium:'오스뮴',nickel:'니켈',zinc:'아연' },
+  pt:{ gold:'Ouro',silver:'Prata',platinum:'Platina',palladium:'Paládio',copper:'Cobre',rhodium:'Ródio',iridium:'Irídio',osmium:'Ósmio',nickel:'Níquel',zinc:'Zinco' },
+  ru:{ gold:'Золото',silver:'Серебро',platinum:'Платина',palladium:'Палладий',copper:'Медь',rhodium:'Родий',iridium:'Иридий',osmium:'Осмий',nickel:'Никель',zinc:'Цинк' },
+  tr:{ gold:'Altın',silver:'Gümüş',platinum:'Platin',palladium:'Paladyum',copper:'Bakır',rhodium:'Rodyum',iridium:'İridyum',osmium:'Osmiyum',nickel:'Nikel',zinc:'Çinko' },
+  hi:{ gold:'सोना',silver:'चांदी',platinum:'प्लेटिनम',palladium:'पैलेडियम',copper:'तांबा',rhodium:'रोडियम',iridium:'इरिडियम',osmium:'ऑस्मियम',nickel:'निकल',zinc:'जस्ता' },
+};
+
+const STOCK_NAMES = {
+  ar:{ us:'🇺🇸 الأسواق الأمريكية', global:'🌍 الأسواق العالمية', sa:'🇸🇦 سوق تداول السعودي' },
+  en:{ us:'🇺🇸 US Markets', global:'🌍 Global Markets', sa:'🇸🇦 Saudi Tadawul' },
+  es:{ us:'🇺🇸 Mercados EE.UU.', global:'🌍 Mercados Globales', sa:'🇸🇦 Bolsa Saudí' },
+  zh:{ us:'🇺🇸 美国市场', global:'🌍 全球市场', sa:'🇸🇦 沙特市场' },
+  fr:{ us:'🇺🇸 Marchés US', global:'🌍 Marchés Mondiaux', sa:'🇸🇦 Bourse Saoudienne' },
+  de:{ us:'🇺🇸 US-Märkte', global:'🌍 Weltmärkte', sa:'🇸🇦 Saudi-Börse' },
+  ja:{ us:'🇺🇸 米国市場', global:'🌍 世界市場', sa:'🇸🇦 サウジ市場' },
+  ko:{ us:'🇺🇸 미국 시장', global:'🌍 글로벌 시장', sa:'🇸🇦 사우디 시장' },
+  pt:{ us:'🇺🇸 Mercados EUA', global:'🌍 Mercados Globais', sa:'🇸🇦 Bolsa Saudita' },
+  ru:{ us:'🇺🇸 Рынки США', global:'🌍 Мировые рынки', sa:'🇸🇦 Саудовский рынок' },
+  tr:{ us:'🇺🇸 ABD Piyasaları', global:'🌍 Küresel Piyasalar', sa:'🇸🇦 Suudi Piyasası' },
+  hi:{ us:'🇺🇸 अमेरिकी बाज़ार', global:'🌍 वैश्विक बाज़ार', sa:'🇸🇦 सऊदी बाज़ार' },
 };
 
 let currentLang = localStorage.getItem('trendi-lang') || 'ar';
 
+// ─── CORE setLang ───────────────────────────────
 function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('trendi-lang', lang);
   const L = LANGS[lang];
   if (!L) return;
+
+  // Direction
   document.documentElement.lang = lang;
   document.documentElement.dir = L.dir;
   document.body.style.direction = L.dir;
 
-  // Live label
-  const ll = document.getElementById('live-label');
-  if(ll) ll.textContent = L.live;
+  // ① All [data-i18n] elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (L[key] !== undefined) el.textContent = L[key];
+  });
 
-  // Tab buttons
+  // ② All [data-i18n-placeholder] inputs
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (L[key] !== undefined) el.placeholder = L[key];
+  });
+
+  // ③ Live label
+  const ll = document.getElementById('live-label');
+  if (ll) ll.textContent = L.live;
+
+  // ④ Ticker bar labels
+  document.querySelectorAll('[data-i18n="tickerStocks"]').forEach(el => el.textContent = L.tickerStocks);
+  document.querySelectorAll('[data-i18n="tickerCrypto"]').forEach(el => el.textContent = L.tickerCrypto);
+
+  // ⑤ Tab buttons
   const tabIds = ['news-eco','metals','stocks','crypto','oil','forex','news-tech','deals','discount'];
   tabIds.forEach((id,i) => {
     const btn = document.getElementById('btn-'+id);
-    if(btn) btn.innerHTML = L.tabs[i];
+    if (btn) btn.innerHTML = L.tabs[i];
   });
 
-  // Section titles
-  const secEls = document.querySelectorAll('.section-title');
-  secEls.forEach((el,i) => { if(L.secTitles[i]) el.textContent = L.secTitles[i]; });
+  // ⑥ Section titles (by index order in DOM)
+  document.querySelectorAll('.section-title').forEach((el,i) => {
+    if (L.secTitles[i]) el.textContent = L.secTitles[i];
+  });
 
-  // Refresh buttons text
+  // ⑦ Refresh buttons
   document.querySelectorAll('.refresh-btn').forEach(btn => {
     const svg = btn.querySelector('svg');
     btn.innerHTML = '';
-    if(svg) btn.appendChild(svg);
-    btn.appendChild(document.createTextNode(' '+L.refresh));
+    if (svg) btn.appendChild(svg);
+    btn.appendChild(document.createTextNode(' ' + L.refresh));
   });
 
-  // Converter labels
-  const amtLabel = document.querySelector('label[for="fx-amount"], .form-label');
-  document.querySelectorAll('.form-label').forEach((el,i) => {
-    if(i===0) el.textContent = L.amount;
-    if(i===1) el.textContent = L.from;
-    if(i===2) el.textContent = L.to;
-  });
+  // ⑧ Forex converter labels (by for/data attr)
+  const fxLabels = document.querySelectorAll('#pane-forex .form-label');
+  if (fxLabels[0]) fxLabels[0].textContent = L.amount;
+  if (fxLabels[1]) fxLabels[1].textContent = L.from;
+  if (fxLabels[2]) fxLabels[2].textContent = L.to;
   const swapBtn = document.querySelector('.swap-btn');
-  if(swapBtn) swapBtn.textContent = L.convert;
+  if (swapBtn) swapBtn.textContent = L.convert;
+  const convTitle = document.querySelector('[data-i18n="converterTitle"]');
+  if (convTitle) convTitle.textContent = L.converterTitle;
 
-  // Calc tabs
+  // ⑨ Discount calculator
   const ct1 = document.getElementById('ctab-from-original');
   const ct2 = document.getElementById('ctab-from-discounted');
-  if(ct1) ct1.textContent = L.calcTab1;
-  if(ct2) ct2.textContent = L.calcTab2;
-
-  // Calc inputs labels
+  if (ct1) ct1.textContent = L.calcTab1;
+  if (ct2) ct2.textContent = L.calcTab2;
   const calcLabels = document.querySelectorAll('.calc-body .form-label');
-  if(calcLabels[0]) calcLabels[0].textContent = L.origPrice;
-  if(calcLabels[1]) calcLabels[1].textContent = L.discPct;
-  if(calcLabels[2]) calcLabels[2].textContent = L.discPrice;
-  if(calcLabels[3]) calcLabels[3].textContent = L.discPctApplied;
+  if (calcLabels[0]) calcLabels[0].textContent = L.origPrice;
+  if (calcLabels[1]) calcLabels[1].textContent = L.discPct;
+  if (calcLabels[2]) calcLabels[2].textContent = L.discPrice;
+  if (calcLabels[3]) calcLabels[3].textContent = L.discPctApplied;
+  const ra = document.querySelector('[data-i18n="afterDisc"]');
+  const rb = document.querySelector('[data-i18n="beforeDisc"]');
+  if (ra) ra.textContent = L.afterDisc;
+  if (rb) rb.textContent = L.beforeDisc;
 
-  // Select value
+  // ⑩ Footer
+  const footer = document.querySelector('[data-i18n="footer"]');
+  if (footer) footer.innerHTML = L.footer;
+
+  // ⑪ Metals section — update card names if already loaded
+  document.querySelectorAll('.card-name[data-metal]').forEach(el => {
+    const metalKey = el.getAttribute('data-metal');
+    const names = METAL_NAMES[lang] || METAL_NAMES.en;
+    if (names[metalKey]) el.textContent = names[metalKey];
+  });
+
+  // ⑫ Stock section headings
+  const sn = STOCK_NAMES[lang] || STOCK_NAMES.en;
+  document.querySelectorAll('[data-market-label]').forEach(el => {
+    const key = el.getAttribute('data-market-label');
+    if (sn[key]) el.textContent = sn[key];
+  });
+
+  // ⑬ News tags already rendered — update
+  document.querySelectorAll('.news-tag[data-tag]').forEach(el => {
+    const key = el.getAttribute('data-tag');
+    if (L.newsTag[key]) el.textContent = L.newsTag[key];
+  });
+
+  // ⑭ "Read more" links
+  document.querySelectorAll('[data-i18n="readMore"]').forEach(el => {
+    el.textContent = L.readMore;
+  });
+
+  // ⑮ Deal type labels
+  document.querySelectorAll('[data-deal-type]').forEach(el => {
+    const key = el.getAttribute('data-deal-type');
+    if (L.dealTypes[key]) el.textContent = L.dealTypes[key];
+  });
+
+  // ⑯ loading-text elements currently visible
+  document.querySelectorAll('.loading-text').forEach(el => {
+    el.textContent = L.loading;
+  });
+
+  // ⑰ Stocks market group headings
+  document.querySelectorAll('h3[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (L[key]) el.textContent = L[key];
+  });
+
+  // Select sync
   const sel = document.getElementById('lang-select');
-  if(sel) sel.value = lang;
+  if (sel) sel.value = lang;
 }
 
-// Init language on load
+// ─── Init on load ──────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const sel = document.getElementById('lang-select');
-  if(sel) sel.value = currentLang;
-  if(currentLang !== 'ar') setLang(currentLang);
+  if (sel) sel.value = currentLang;
+  if (currentLang !== 'ar') setLang(currentLang);
+  else setLang('ar'); // ensure AR direction set
 });
 
 </script>
