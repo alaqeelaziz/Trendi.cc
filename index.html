@@ -402,7 +402,7 @@ function pcard(chg,sym,name,price,priceStr,unit,extra) {
 }
 function secHeader(title, tabId) {
   return '<div class="sec-header"><div class="sec-title">'+title+'</div>'+
-    '<button class="refresh-btn" onclick="reloadTab(&apos;'+tabId+'&apos;)">'+
+    '<button class="refresh-btn" data-reload="'+tabId+'">'+
     '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>'+
     ' '+L().refresh+'</button></div>';
 }
@@ -457,8 +457,13 @@ function buildNav() {
   var nav=document.getElementById('nav-tabs');
   if(!nav) return;
   nav.innerHTML = TABS.map(function(t,i) {
-    return '<button class="tab-btn'+(t.id===activeTab?' active':'')+'" id="btn-'+t.id+'" onclick="switchTab(\'"+t.id+"\')">'+t.icon+' '+L().tabs[i]+'</button>';
+    var cls = 'tab-btn'+(t.id===activeTab?' active':'');
+    return '<button class="'+cls+'" id="btn-'+t.id+'" data-tab="'+t.id+'">'+t.icon+' '+L().tabs[i]+'</button>';
   }).join('');
+  // Attach click handlers
+  nav.querySelectorAll('[data-tab]').forEach(function(btn) {
+    btn.addEventListener('click', function() { switchTab(this.getAttribute('data-tab')); });
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -488,23 +493,138 @@ function renderTab(id) {
 // ═══════════════════════════════════════════
 // RENDER FUNCTIONS
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// MULTILINGUAL NEWS DATA
+// ═══════════════════════════════════════════
+var ECO_NEWS = {
+  ar: [
+    {src:'MarketWatch', clr:'#2196F3', tag:'mkt', t:'الأسهم الأمريكية تتراجع وسط مخاوف الحرب التجارية', d:'سجّلت وول ستريت أسوأ أداء أسبوعي لها في 2025 مع تصاعد التوترات التجارية بين الولايات المتحدة والصين. انخفض مؤشر S&P 500 بنسبة 3.1% ودخل منطقة التصحيح، مع تراجع قطاعات التكنولوجيا والمستهلكين.'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'الذهب يتجاوز 3200 دولار ويسجل رقماً قياسياً جديداً', d:'ارتفعت أسعار الذهب إلى مستوى قياسي فوق 3200 دولار للأوقية مع تزايد الطلب على الأصول الآمنة. تدفعها مشتريات البنوك المركزية وتدفقات صناديق ETF والمخاوف من الركود العالمي.'},
+    {src:'CNBC', clr:'#e63946', tag:'eco', t:'الفيدرالي يثبّت الفائدة ويُلمح إلى الحذر من الخفض', d:'أبقى الاحتياطي الفيدرالي على معدل الفائدة عند 4.25-4.50% في اجتماع أبريل، مع تحذير الرئيس باول من عدم اليقين المتزايد جراء السياسة التجارية. الأسواق تُسعّر خفضاً واحداً فقط لعام 2025.'},
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'النفط يهبط دون 65 دولاراً مع مخاوف الركود', d:'انخفض خام برنت إلى ما دون 65 دولاراً للبرميل مع ترجيح المتداولين احتمالاً أعلى لركود عالمي بسبب الرسوم الجمركية الأمريكية. تدرس أوبك+ عقد اجتماع طارئ لبحث تعديلات الإنتاج.'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'رؤية 2030 السعودية تجذب 50 مليار دولار استثمارات', d:'أعلن صندوق الاستثمارات العامة السعودي عن التزامات باستثمارات أجنبية مباشرة بقيمة 50 مليار دولار في مبادرة مستقبل الاستثمار، تستهدف نيوم ومشاريع البحر الأحمر وصناعات التحول الاقتصادي.'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'صندوق النقد الدولي يخفض توقعات النمو العالمي إلى 2.8%', d:'خفّض صندوق النقد الدولي توقعاته للنمو العالمي في 2025 إلى 2.8%، محتجاً بتشرذم التجارة وعدم اليقين الجمركي. تواجه اقتصادات الأسواق الناشئة رياحاً معاكسة بسبب قوة الدولار.'},
+    {src:'MarketWatch', clr:'#2196F3', tag:'mkt', t:'اليورو يرتفع لأعلى مستوى في 3 سنوات أمام الدولار', d:'ارتفع اليورو إلى 1.13 دولار، أعلى مستوياته منذ 2022، مع رهان الأسواق على صمود الاقتصاد الأوروبي أمام الحرب التجارية أفضل من الولايات المتحدة. انخفض مؤشر الدولار لأدنى مستوى في عامين.'},
+    {src:'CNBC', clr:'#e63946', tag:'eco', t:'الصين تردّ بتعريفات 125% على البضائع الأمريكية', d:'أعلنت بكين فرض تعريفات انتقامية بنسبة 125% على المنتجات الزراعية والطاقة الأمريكية، مما يصعّد النزاع التجاري بصورة حادة. يحذر الاقتصاديون من تراجع محتمل في نمو الناتج المحلي الإجمالي العالمي.'},
+  ],
+  en: [
+    {src:'MarketWatch', clr:'#2196F3', tag:'mkt', t:'US Stocks Tumble Amid Tariff War Escalation', d:'Wall Street posted its worst weekly performance of 2025 as investors digest the economic fallout from escalating US-China trade tensions. The S&P 500 shed 3.1%, entering correction territory, with tech and consumer sectors leading declines.'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'Gold Surges Past $3,200 — A New All-Time High', d:'Gold prices hit a record above $3,200 per ounce as investors rushed to safe-haven assets amid global market turmoil. Central bank purchases, ETF inflows, and recession fears are all fueling the historic rally.'},
+    {src:'CNBC', clr:'#e63946', tag:'eco', t:'Federal Reserve Holds Rates — Signals Caution on Cuts', d:"The Federal Reserve kept its benchmark rate at 4.25-4.50% at its April meeting, with Chair Powell citing heightened uncertainty from trade policy. Futures markets now price in only one rate cut for 2025."},
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'Oil Falls Below $65 on Global Recession Fears', d:'Brent crude dropped below $65 a barrel as traders price in a higher probability of global recession triggered by US tariffs. OPEC+ is reportedly considering an emergency meeting to discuss production adjustments.'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:"Saudi Vision 2030 Attracts $50B in New Foreign Investment", d:"Saudi Arabia's Public Investment Fund announced $50 billion in new foreign direct investment commitments at the Future Investment Initiative. Key projects include NEOM, Red Sea tourism, and advanced manufacturing."},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'IMF Cuts Global Growth Forecast to 2.8% for 2025', d:'The International Monetary Fund lowered its 2025 global growth forecast to 2.8%, citing trade fragmentation and tariff uncertainty. Emerging market economies face particular headwinds as dollar strength increases debt costs.'},
+    {src:'MarketWatch', clr:'#2196F3', tag:'mkt', t:'Euro Hits 3-Year High Against Dollar at $1.13', d:"The euro surged to $1.13, its strongest since 2022, as markets bet European economies will weather the trade war better than the United States. The dollar index fell to a two-year low."},
+    {src:'CNBC', clr:'#e63946', tag:'eco', t:'China Retaliates with 125% Tariffs on US Goods', d:"Beijing announced sweeping 125% retaliatory tariffs on US agricultural products and energy, dramatically escalating the trade conflict. Economists warn the measures could shave 0.5% from global GDP growth."},
+  ],
+  fr: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'Les marchés US chutent face aux craintes de guerre commerciale', d:"Wall Street a enregistré sa pire semaine de 2025 face aux tensions commerciales croissantes entre Washington et Pékin. Le S&P 500 a perdu 3,1%, entrant en territoire de correction avec des baisses dans les secteurs tech et consommation."},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:"L'or dépasse 3 200 dollars — un nouveau record historique", d:"Le prix de l'or a atteint un niveau record au-dessus de 3 200 dollars l'once, porté par la demande de valeurs refuges. Les achats des banques centrales, les flux ETF et les craintes de récession alimentent ce rallye historique."},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'La Fed maintient ses taux et signale la prudence', d:"La Réserve fédérale a maintenu son taux directeur à 4,25-4,50% lors de sa réunion d'avril. Le président Powell a cité l'incertitude élevée liée à la politique commerciale comme frein aux futures baisses."},
+    {src:'CNBC', clr:'#e63946', tag:'mkt', t:'Le pétrole tombe sous 65 dollars sur fond de craintes de récession', d:"Le Brent est tombé sous les 65 dollars le baril, les traders anticipant une probabilité plus élevée de récession mondiale due aux tarifs américains. L'OPEP+ envisage une réunion d'urgence pour discuter des ajustements de production."},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'Le FMI réduit ses prévisions de croissance mondiale à 2,8%', d:"Le Fonds monétaire international a abaissé ses prévisions de croissance mondiale pour 2025 à 2,8%, citant la fragmentation des échanges et l'incertitude tarifaire comme principaux facteurs de risque."},
+    {src:'MarketWatch', clr:'#2196F3', tag:'mkt', t:"L'euro atteint un plus haut de 3 ans face au dollar", d:"L'euro a bondi à 1,13 dollar, son niveau le plus élevé depuis 2022, les marchés pariant que l'Europe résistera mieux que les Etats-Unis à la guerre commerciale. L'indice du dollar est tombé à son plus bas en deux ans."},
+  ],
+  de: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'US-Aktien brechen ein — Handelskonflikt eskaliert', d:'Die Wall Street verzeichnete ihre schlechteste Woche 2025, da Investoren die wirtschaftlichen Auswirkungen des US-China-Handelskonflikts verarbeiteten. Der S&P 500 verlor 3,1% und betrat Korrektursgebiet.'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'Gold steigt auf 3.200 Dollar — Neues Allzeithoch', d:'Der Goldpreis erreichte einen Rekordstand von über 3.200 Dollar je Unze, da Investoren Safe-Haven-Werte bevorzugten. Zentralbankkäufe, ETF-Zuflüsse und Rezessionsängste befeuern die historische Rally.'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'Fed hält Zinsen stabil — Signalisiert Vorsicht', d:'Die Fed beließ den Leitzins bei 4,25-4,50% auf ihrer April-Sitzung. Vorsitzender Powell verwies auf erhöhte Unsicherheit durch Handelspolitik als Hindernis für künftige Zinssenkungen.'},
+    {src:'CNBC', clr:'#e63946', tag:'mkt', t:'Ölpreis fällt unter 65 Dollar wegen Rezessionsängsten', d:'Brent-Rohöl fiel unter 65 Dollar je Barrel, da Händler eine höhere Wahrscheinlichkeit einer globalen Rezession durch US-Zölle einpreisen. Die OPEC+ erwägt ein Notfalltreffen zur Anpassung der Fördermengen.'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'IWF senkt Wachstumsprognose auf 2,8%', d:'Der Internationale Währungsfonds senkte seine Wachstumsprognose für 2025 auf 2,8%, und verwies auf Handelsfragmentierung und Zollunsicherheiten als Hauptrisikofaktoren für die Weltwirtschaft.'},
+  ],
+  es: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'Wall Street cae por escalada de la guerra comercial', d:'La bolsa de Nueva York registró su peor semana de 2025 mientras los inversores digieren el impacto de las tensiones comerciales entre EEUU y China. El S&P 500 cayó un 3,1% y entró en territorio de corrección.'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'El oro supera los 3.200 dolares — Nuevo record historico', d:'Los precios del oro alcanzaron un nuevo record por encima de 3.200 dolares por onza impulsados por la demanda de activos seguros. Las compras de bancos centrales y los temores a recesion alimentan este rally historico.'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'La Fed mantiene tasas y pide cautela', d:'La Reserva Federal mantuvo su tasa de referencia en 4,25-4,50% en su reunion de abril, con el presidente Powell citando la incertidumbre comercial como obstaculo para futuros recortes.'},
+    {src:'CNBC', clr:'#e63946', tag:'mkt', t:'El petroleo cae por debajo de 65 dolares', d:'El Brent cayo por debajo de los 65 dolares por barril ante el mayor riesgo de recesion global por los aranceles de EEUU. La OPEP+ considera convocar una reunion de emergencia para ajustar la produccion.'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'El FMI recorta prevision de crecimiento al 2,8%', d:'El Fondo Monetario Internacional rebajo su prevision de crecimiento mundial para 2025 al 2,8%, citando la fragmentacion del comercio y la incertidumbre arancelaria como principales factores de riesgo.'},
+  ],
+  zh: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'贸易战升级 美国股市大幅下跌', d:'随着美中贸易紧张局势升级，华尔街录得2025年最差周度表现。标普500指数下跌3.1%进入调整区间，科技和消费板块领跌。'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'黄金突破3200美元 创历史新高', d:'受避险需求推动，黄金价格创历史新高突破每盎司3200美元。央行购金、ETF资金流入以及经济衰退担忧共同推动这一历史性涨势。'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'美联储维持利率不变 释放谨慎信号', d:'美联储在4月会议上将基准利率维持在4.25%-4.50%不变，主席鲍威尔指出贸易政策带来的不确定性是降息的阻碍。市场目前仅预期2025年降息一次。'},
+    {src:'CNBC', clr:'#e63946', tag:'mkt', t:'衰退担忧加剧 油价跌破65美元', d:'受美国关税引发全球衰退风险上升影响，布伦特原油跌破每桶65美元。据报道欧佩克+正考虑召开紧急会议讨论调整产量。'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'国际货币基金组织下调全球增长预测至2.8%', d:'国际货币基金组织将2025年全球经济增长预测下调至2.8%，理由是贸易碎片化和关税不确定性。美元走强使新兴市场面临资本外流和债务偿还压力。'},
+  ],
+  ja: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'貿易戦争激化で米株式市場が急落', d:'米中貿易摩擦の激化を受け、ウォール街は2025年最悪の週間パフォーマンスを記録した。S&P500は3.1%下落し調整局面入り。テクノロジーおよび消費財セクターが下落を牽引した。'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'金価格が3,200ドル突破 — 史上最高値更新', d:'リスク回避需要の高まりを受け、金先物価格が1オンス=3,200ドルの史上最高値を更新。中央銀行の購入、ETFへの資金流入、景気後退懸念がこの歴史的な上昇を後押ししている。'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'FRB、金利据え置き — 慎重姿勢を示唆', d:'FRBは4月の会合で政策金利を4.25~4.50%に据え置いた。パウエル議長は貿易政策をめぐる不確実性の高まりが将来の利下げを困難にしていると述べた。'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'IMF、2025年世界成長見通しを2.8%に下方修正', d:'IMFは2025年の世界経済成長見通しを2.8%に下方修正。貿易の分断化と関税をめぐる不透明感が主なリスク要因として挙げられた。新興市場はドル高による債務負担増加という逆風に直面している。'},
+  ],
+  ko: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'무역전쟁 격화로 미국 증시 급락', d:'미중 무역 갈등 심화로 월스트리트는 2025년 최악의 주간 성과를 기록했다. S&P500은 3.1% 하락해 조정 구간에 진입했으며, 기술주와 소비재 섹터가 하락을 주도했다.'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'금값 3,200달러 돌파 — 사상 최고치 경신', d:'안전자산 수요 급증으로 금 선물 가격이 온스당 3,200달러를 넘어 사상 최고치를 경신했다. 중앙은행 매입, ETF 자금 유입, 경기 침체 우려가 이 역사적 랠리를 뒷받침하고 있다.'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'연준, 기준금리 동결 — 인하에 신중 시사', d:'연준은 4월 회의에서 기준금리를 4.25~4.50%로 유지했다. 파월 의장은 무역 정책 불확실성이 향후 금리 인하의 걸림돌이 되고 있다고 밝혔다.'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'IMF, 2025년 세계 성장률 전망 2.8%로 하향', d:'IMF는 2025년 세계 경제 성장률 전망을 2.8%로 하향 조정했다. 무역 단편화와 관세 불확실성이 주요 위험 요인으로 꼽혔다.'},
+  ],
+  ru: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'Торговая война усилилась — фондовые рынки США рухнули', d:'Уолл-стрит показала худшие недельные результаты 2025 года на фоне эскалации торговых противоречий между США и Китаем. Индекс S&P 500 упал на 3,1%, войдя в зону коррекции.'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'Золото превысило $3200 — новый исторический максимум', d:'Золото достигло рекордного уровня выше $3200 за унцию на фоне спроса на защитные активы. Покупки центральных банков, притоки в ETF и опасения рецессии подпитывают этот исторический ралли.'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'ФРС сохранила ставки — сигнализирует о осторожности', d:'Федеральная резервная система сохранила базовую ставку на уровне 4,25-4,50% на апрельском заседании. Председатель Пауэлл указал на повышенную неопределённость из-за торговой политики.'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'МВФ снизил прогноз мирового роста до 2,8%', d:'Международный валютный фонд понизил прогноз мирового экономического роста на 2025 год до 2,8%, сославшись на фрагментацию торговли и тарифную неопределённость как основные факторы риска.'},
+  ],
+  tr: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'Ticaret savasi tirmanirken ABD borsalari dusus yasiyor', d:"ABD-Cin ticaret geriliminin tirmandigi bir haftada Wall Street 2025'in en kotu haftalik performansini kaydetti. S&P 500 yuzde 3,1 dusarak duzeltme bolgesine girdi; teknoloji ve tuketim sektorleri one cikti."},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'Altin 3.200 dolari asti - Tarihi rekor kirildi', d:'Guvenli liman talebiyle altin fiyatlari ons basina 3.200 dolarin uzerinde tarihi rekor kirdi. Merkez bankasi alisverisler, ETF girisleri ve resesyon endiseleri bu tarihi yukselisi destekliyor.'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'Fed faizleri sabit tuttu - Dikkatli olacagina isaret etti', d:"Fed, Nisan toplantisinda faiz oranini yuzde 4,25-4,50 arasinda sabit tuttu. Bakan Powell ticaret politikasindaki yuksek belirsizligi gelecekteki faiz indirimlerine engel olarak gosterdi."},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'IMF kuresel buyume tahminini yuzde 2,8e indirdi', d:"IMF, ticaret parcalanmasi ve gumruk belirsizligini one surerek 2025 yili kuresel buyume tahminini yuzde 2,8'e indirdi."},
+  ],
+  pt: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'Bolsas americanas despencam com guerra comercial', d:'Wall Street registrou sua pior semana de 2025 enquanto investidores digerem o impacto das tensoes comerciais EUA-China. O S&P 500 recuou 3,1%, entrando em territorio de correcao.'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'Ouro supera US$3.200 e bate recorde historico', d:'Os precos do ouro atingiram um nivel recorde acima de US$3.200 por onca, impulsionados pela demanda por ativos seguros. Compras de bancos centrais e temores de recessao alimentam este rali historico.'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'Fed mantem juros e sinaliza cautela nos cortes', d:'O Federal Reserve manteve sua taxa basica em 4,25-4,50% em sua reuniao de abril. O presidente Powell citou incerteza elevada da politica comercial como obstaculo para futuros cortes.'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'FMI corta previsao de crescimento global para 2,8%', d:'O Fundo Monetario Internacional reduziu sua previsao de crescimento global para 2025 para 2,8%, citando fragmentacao do comercio e incerteza tarifaria como principais fatores de risco.'},
+  ],
+  hi: [
+    {src:'Reuters', clr:'#FF6B00', tag:'mkt', t:'व्यापार युद्ध से अमेरिकी बाज़ार में गिरावट', d:'अमेरिका-चीन व्यापार तनाव के बढ़ने से वॉल स्ट्रीट ने 2025 का सबसे खराब साप्ताहिक प्रदर्शन दर्ज किया। S&P 500 में 3.1% की गिरावट आई और यह सुधार क्षेत्र में प्रवेश कर गया।'},
+    {src:'Bloomberg', clr:'#6DC328', tag:'eco', t:'सोना $3,200 के पार — नया सर्वकालिक उच्च', d:'सुरक्षित आश्रय की मांग से सोने की कीमत $3,200 प्रति औंस के ऐतिहासिक स्तर पर पहुंची। केंद्रीय बैंकों की खरीद और मंदी की आशंका इस रैली को बढ़ावा दे रही है।'},
+    {src:'Financial Times', clr:'#1e88e5', tag:'eco', t:'फेड ने ब्याज दरें स्थिर रखीं', d:'फेडरल रिजर्व ने अप्रैल की बैठक में ब्याज दर 4.25-4.50% पर बनाए रखी। अध्यक्ष पॉवेल ने व्यापार नीति की अनिश्चितता को भविष्य में दर कटौती की बाधा बताया।'},
+    {src:'The Economist', clr:'#1565C0', tag:'ana', t:'IMF ने वैश्विक विकास अनुमान 2.8% तक घटाया', d:'अंतर्राष्ट्रीय मुद्रा कोष ने 2025 के लिए वैश्विक विकास अनुमान को 2.8% तक घटाया, व्यापार विखंडन और टैरिफ अनिश्चितता को मुख्य जोखिम कारक बताया।'},
+  ],
+};
+
+var TECH_NEWS = {
+  ar: [
+    {src:'TechCrunch', clr:'#6DC328', tag:'tech', t:'كلود 4 من Anthropic يتصدر معايير الذكاء الاصطناعي', d:'أطلقت Anthropic نموذج Claude Sonnet 4 الذي تفوّق على GPT-4o وGemini Ultra في معايير البرمجة والرياضيات والاستدلال متعدد الخطوات. يُظهر النموذج قدرات استثنائية في فهم السياق الطويل.'},
+    {src:'The Verge', clr:'#1e88e5', tag:'tech', t:'نقص رقائق Blackwell من Nvidia يتفاقم — 6 أشهر انتظار', d:'يتجاوز الطلب على رقائق Blackwell B200 من Nvidia القدرة الإنتاجية بفارق كبير، مع تقارير عن قوائم انتظار تمتد لأكثر من 6 أشهر. النقص يرفع تكاليف الحوسبة السحابية للذكاء الاصطناعي.'},
+    {src:'Ars Technica', clr:'#f5c518', tag:'inn', t:'Apple Intelligence تتوسع إلى 12 لغة ومنطقة جديدة', d:'أطلقت Apple مجموعة الذكاء الاصطناعي Apple Intelligence في 12 منطقة جديدة تشمل السعودية وفرنسا وألمانيا واليابان. التوسع يشمل ترقيات Siri وأدوات الكتابة الذكية وميزات توليد الصور.'},
+    {src:'Wired', clr:'#90b8d8', tag:'inn', t:'Meta تطلق Llama 4 — أقوى نموذج مفتوح المصدر حتى الآن', d:'أطلقت Meta نموذج Llama 4 مفتوح المصدر الأكثر قدرة، مدّعيةً أداءً منافساً لـ GPT-4. آلاف المطورين بدأوا البناء عليه فور إطلاقه، مما يُسرّع اعتماد الذكاء الاصطناعي عالمياً.'},
+    {src:'Ars Technica', clr:'#f5c518', tag:'dev', t:'حرب الرقائق بين الولايات المتحدة والصين تتصاعد بقيود تصدير جديدة', d:'وسّعت الولايات المتحدة ضوابط التصدير لحظر بيع رقائق الذكاء الاصطناعي المتقدمة للصين، مما أثّر على Nvidia وAMD. أكدت TSMC وقف شحنات رقائق 7nm وما دون للجهات الصينية.'},
+    {src:'TechCrunch', clr:'#6DC328', tag:'dev', t:'الإنفاق العالمي على الأمن السيبراني يتجاوز 300 مليار دولار في 2025', d:'تتوقع Gartner تجاوز الإنفاق العالمي على الأمن السيبراني 300 مليار دولار في 2025، مدفوعاً بالتهديدات المدعومة بالذكاء الاصطناعي وهجمات برامج الفدية على البنية التحتية الحيوية.'},
+  ],
+  en: [
+    {src:'TechCrunch', clr:'#6DC328', tag:'tech', t:'Anthropic Claude 4 Tops AI Benchmarks Across the Board', d:'Anthropic released Claude Sonnet 4, which outperformed GPT-4o and Gemini Ultra on coding, mathematics, and multi-step reasoning benchmarks. The model shows particular strength in long-context understanding tasks.'},
+    {src:'The Verge', clr:'#1e88e5', tag:'tech', t:'Nvidia Blackwell GPU Shortage Worsens — 6-Month Wait Times', d:"Demand for Nvidia's Blackwell B200 GPUs continues to far exceed production capacity, with major cloud providers reporting 6-month-plus waitlists. The shortage is driving up AI computing costs globally."},
+    {src:'Ars Technica', clr:'#f5c518', tag:'inn', t:'Apple Intelligence Expands to 12 New Languages and Regions', d:'Apple rolled out its AI suite to 12 new regions including Saudi Arabia, France, Germany, and Japan. The expansion includes upgraded Siri, smart writing tools, and image generation features.'},
+    {src:'Wired', clr:'#90b8d8', tag:'inn', t:'Meta Releases Llama 4 — Most Powerful Open-Source AI Yet', d:'Meta launched Llama 4, its most capable open-source AI model, claiming performance competitive with GPT-4. Thousands of developers are already building on the release, accelerating global AI adoption.'},
+    {src:'Ars Technica', clr:'#f5c518', tag:'dev', t:'US-China Chip War Escalates with New Export Controls', d:'The US expanded export controls blocking advanced AI chip sales to China, affecting Nvidia and AMD. TSMC confirmed halting all shipments of 7nm and below chips to Chinese entities.'},
+    {src:'TechCrunch', clr:'#6DC328', tag:'dev', t:'Global Cybersecurity Spending to Hit $300B in 2025', d:'Gartner forecasts global cybersecurity spending will exceed $300 billion in 2025, driven by AI-powered threats and ransomware attacks on critical infrastructure worldwide.'},
+  ],
+};
+// For languages without specific content, fall back to English
+function getEcoNews() { return ECO_NEWS[lang] || ECO_NEWS.en; }
+function getTechNews() { return TECH_NEWS[lang] || TECH_NEWS.en; }
+
 function renderEco() {
-  var p=document.getElementById('pane-eco');
-  if(!p) return;
-  p.innerHTML = secHeader(L().secT[0],'eco') + renderNewsCards(D.ecoNews);
-  loadLiveEco();
+  var p = document.getElementById('pane-eco');
+  if (!p) return;
+  p.innerHTML = secHeader(L().secT[0], 'eco') + renderNewsCards(getEcoNews());
+  setTimeout(loadLiveEco, 100);
 }
+
 function renderTech() {
-  var p=document.getElementById('pane-tech');
-  if(!p) return;
-  p.innerHTML = secHeader(L().secT[6],'tech') + renderNewsCards(D.techNews);
-  loadLiveTech();
+  var p = document.getElementById('pane-tech');
+  if (!p) return;
+  p.innerHTML = secHeader(L().secT[6], 'tech') + renderNewsCards(getTechNews());
+  setTimeout(loadLiveTech, 100);
 }
+
 function renderNewsCards(news) {
   return '<div class="news-grid">'+news.map(function(n,i) {
     var tid=L().tags[n.tag]||n.tag;
     var uid='nc'+i+Math.random().toString(36).substr(2,5);
-    return '<div class="news-card" id="'+uid+'" onclick="toggleNews(\'"+uid+"\')">'+
+    return '<div class="news-card" id="'+uid+'" data-news="'+uid+'">'+
       '<div class="news-source" style="color:'+n.clr+'">'+n.src+'</div>'+
       '<div class="news-title">'+n.t+'</div>'+
       '<div class="news-desc">'+n.d.substring(0,130)+'...</div>'+
@@ -671,8 +791,8 @@ function renderCalc() {
   p.innerHTML=secHeader(L().secT[8],'calc')+
   '<div class="calc-wrap"><div class="calc-card">'+
     '<div class="calc-tabs">'+
-      '<button class="calc-tab active" id="ctA" onclick="swCalc(\'A\')">'+L().tab1+'</button>'+
-      '<button class="calc-tab" id="ctB" onclick="swCalc(\'B\')">'+L().tab2+'</button>'+
+      '<button class="calc-tab active" id="ctA" data-calc="A">'+L().tab1+'</button>'+
+      '<button class="calc-tab" id="ctB" data-calc="B">'+L().tab2+'</button>'+
     '</div>'+
     '<div class="calc-body" id="cbA">'+
       '<div class="form-group"><label class="form-label">'+L().op+'</label><input type="number" class="form-input" id="cOP" placeholder="1000" oninput="calcA()"></div>'+
@@ -758,53 +878,69 @@ function loadLiveTech() {
 // LANGUAGE
 // ═══════════════════════════════════════════
 function setLang(l) {
-  lang=l;
-  localStorage.setItem('t-lang',l);
-  document.documentElement.lang=l;
-  document.documentElement.dir=I18N[l]?I18N[l].dir:'rtl';
-  document.body.style.direction=I18N[l]?I18N[l].dir:'rtl';
-  // Update ticker labels
-  var ls=document.getElementById('lbl-stocks'), lc=document.getElementById('lbl-crypto');
-  if(ls)ls.textContent=L().lbl_s; if(lc)lc.textContent=L().lbl_c;
-  // Update live badge
-  var ll=document.getElementById('live-lbl'); if(ll)ll.textContent=L().live;
+  lang = l;
+  localStorage.setItem('t-lang', l);
+  var Li = I18N[l] || I18N.ar;
+  document.documentElement.lang = l;
+  document.documentElement.dir = Li.dir;
+  document.body.style.direction = Li.dir;
+  // Ticker labels
+  var ls = document.getElementById('lbl-stocks');
+  var lc = document.getElementById('lbl-crypto');
+  if (ls) ls.textContent = Li.lbl_s;
+  if (lc) lc.textContent = Li.lbl_c;
+  // Live badge
+  var ll = document.getElementById('live-lbl');
+  if (ll) ll.textContent = Li.live;
   // Footer
-  var ft=document.getElementById('footer-txt'); if(ft)ft.textContent=L().footer;
-  // Rebuild nav
+  var ft = document.getElementById('footer-txt');
+  if (ft) ft.textContent = Li.footer;
+  // Sync select
+  var sel = document.getElementById('lang-sel');
+  if (sel) sel.value = l;
+  // Rebuild nav with new language
   buildNav();
-  // Re-render all loaded tabs
-  Object.keys(loadedTabs2).forEach(function(id){if(loadedTabs2[id])renderTab(id);});
-  // Select sync
-  var sel=document.getElementById('lang-sel'); if(sel)sel.value=l;
+  // Re-render ALL loaded tabs so content translates
+  Object.keys(loadedTabs2).forEach(function(id) {
+    if (loadedTabs2[id]) renderTab(id);
+  });
 }
-
-// ═══════════════════════════════════════════
-// THEME
-// ═══════════════════════════════════════════
-function toggleTheme() {
-  document.body.classList.toggle('light');
-  document.getElementById('theme-btn').textContent=document.body.classList.contains('light')?'🌙':'☀️';
-  localStorage.setItem('t-theme',document.body.classList.contains('light')?'light':'dark');
-}
-if(localStorage.getItem('t-theme')==='light') document.body.classList.add('light');
-
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
-  lang = localStorage.getItem('t-lang')||'ar';
-  document.documentElement.dir=I18N[lang]?I18N[lang].dir:'rtl';
-  document.body.style.direction=I18N[lang]?I18N[lang].dir:'rtl';
-  var sel=document.getElementById('lang-sel'); if(sel)sel.value=lang;
+  // Global event delegation — handles all dynamic buttons safely
+  document.addEventListener('click', function(e) {
+    var t = e.target.closest ? e.target.closest('[data-tab]') : null;
+    if (t) { switchTab(t.getAttribute('data-tab')); return; }
+    var r = e.target.closest ? e.target.closest('[data-reload]') : null;
+    if (r) { reloadTab(r.getAttribute('data-reload')); return; }
+    var n = e.target.closest ? e.target.closest('[data-news]') : null;
+    if (n) { toggleNews(n.getAttribute('data-news')); return; }
+    var c = e.target.closest ? e.target.closest('[data-calc]') : null;
+    if (c) { swCalc(c.getAttribute('data-calc')); return; }
+  });
+
+  lang = localStorage.getItem('t-lang') || 'ar';
+  var Li = I18N[lang] || I18N.ar;
+  document.documentElement.dir = Li.dir;
+  document.body.style.direction = Li.dir;
+  var sel = document.getElementById('lang-sel');
+  if (sel) sel.value = lang;
+  if (localStorage.getItem('t-theme') === 'light') document.body.classList.add('light');
   buildNav();
   buildTickers();
   renderEco();
-  // Update ticker labels
-  var ls=document.getElementById('lbl-stocks'),lc=document.getElementById('lbl-crypto');
-  if(ls)ls.textContent=L().lbl_s; if(lc)lc.textContent=L().lbl_c;
-  var ll=document.getElementById('live-lbl'); if(ll)ll.textContent=L().live;
-  var ft=document.getElementById('footer-txt'); if(ft)ft.textContent=L().footer;
+  var ls = document.getElementById('lbl-stocks');
+  var lc = document.getElementById('lbl-crypto');
+  if (ls) ls.textContent = Li.lbl_s;
+  if (lc) lc.textContent = Li.lbl_c;
+  var ll = document.getElementById('live-lbl');
+  if (ll) ll.textContent = Li.live;
+  var ft = document.getElementById('footer-txt');
+  if (ft) ft.textContent = Li.footer;
 });
+
 </script>
 </body>
 </html>
