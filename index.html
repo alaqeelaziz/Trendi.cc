@@ -948,59 +948,66 @@ async function loadTickerData() {
 async function loadEcoNews(btn) {
   spinBtn(btn);
   const container = document.getElementById('eco-news-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
+  const L = LANGS[currentLang]||LANGS.ar;
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
 
-  // Using RSS feeds via rss2json for no-key access
+  // Official RSS sources as specified
+  const RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
   const sources = [
-    { url: 'https://feeds.bloomberg.com/markets/news.rss', name: 'Bloomberg' },
-    { url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html', name: 'CNBC' },
-    { url: 'https://www.ft.com/?format=rss', name: 'Financial Times' },
-    { url: 'https://www.economist.com/finance-and-economics/rss.xml', name: 'The Economist' }
+    { url: 'https://www.investing.com/rss/news.rss',              name: 'Investing.com',    tag:'eco' },
+    { url: 'https://www.reutersagency.com/feed/?best-topics=business-finance',       name: 'Reuters',          tag:'mkt' },
+    { url: 'https://feeds.marketwatch.com/marketwatch/topstories/',          name: 'MarketWatch',      tag:'mkt' },
+    { url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html',name: 'CNBC',             tag:'mkt' },
+    { url: 'https://feeds.bloomberg.com/markets/news.rss',         name: 'Bloomberg',        tag:'eco' },
+    { url: 'https://www.ft.com/?format=rss',                       name: 'Financial Times',  tag:'fin' },
+    { url: 'https://www.economist.com/finance-and-economics/rss.xml', name:'The Economist', tag:'ana' },
   ];
-  const apiBase = 'https://api.rss2json.com/v1/api.json?rss_url=';
-  let allItems = [];
-  for (const src of sources) {
-    try {
-      const r = await fetch(apiBase + encodeURIComponent(src.url) + '&count=5');
-      const d = await r.json();
-      if (d.items) allItems.push(...d.items.map(i => ({...i, source: src.name})));
-    } catch(e) {}
-  }
 
-  if (!allItems.length) {
-    // Fallback static curated items
-    allItems = getFallbackNews('economy');
-  }
-  allItems = allItems.slice(0,24).sort((a,b) => new Date(b.pubDate||b.date)-new Date(a.pubDate||a.date));
+  let allItems = [];
+  const promises = sources.map(src =>
+    fetch(RSS2JSON + encodeURIComponent(src.url) + '&count=5')
+      .then(r => r.json())
+      .then(d => { if (d.items?.length) allItems.push(...d.items.map(i => ({...i, source: src.name}))); })
+      .catch(() => {})
+  );
+  await Promise.allSettled(promises);
+
+  if (!allItems.length) allItems = getFallbackNews('economy');
+  allItems = allItems.slice(0,24).sort((a,b) => new Date(b.pubDate||b.date||0)-new Date(a.pubDate||a.date||0));
   renderNews(container, allItems);
   stopBtn(btn);
 }
 
 // ═══════════════════════════════════════════════
-//  ⑦ TECH NEWS
+//  ⑦ TECH NEWS — Official RSS sources
 // ═══════════════════════════════════════════════
 async function loadTechNews(btn) {
   spinBtn(btn);
   const container = document.getElementById('tech-news-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
+  const L = LANGS[currentLang]||LANGS.ar;
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
 
+  // Official tech RSS sources as specified
+  const RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
   const sources = [
-    { url: 'https://feeds.feedburner.com/TechCrunch', name: 'TechCrunch' },
-    { url: 'https://www.theverge.com/rss/index.xml', name: 'The Verge' },
-    { url: 'https://www.wired.com/feed/rss', name: 'Wired' },
-    { url: 'https://hnrss.org/frontpage', name: 'Hacker News' }
+    { url: 'https://techcrunch.com/feed/',                          name: 'TechCrunch'  },
+    { url: 'https://www.theverge.com/rss/index.xml',               name: 'The Verge'   },
+    { url: 'https://feeds.arstechnica.com/arstechnica/index',      name: 'Ars Technica'},
+    { url: 'https://www.wired.com/feed/rss',                       name: 'Wired'       },
+    { url: 'https://hnrss.org/frontpage',                          name: 'Hacker News' },
   ];
-  const apiBase = 'https://api.rss2json.com/v1/api.json?rss_url=';
+
   let allItems = [];
-  for (const src of sources) {
-    try {
-      const r = await fetch(apiBase + encodeURIComponent(src.url) + '&count=5');
-      const d = await r.json();
-      if (d.items) allItems.push(...d.items.map(i => ({...i, source: src.name})));
-    } catch(e) {}
-  }
+  const promises = sources.map(src =>
+    fetch(RSS2JSON + encodeURIComponent(src.url) + '&count=5')
+      .then(r => r.json())
+      .then(d => { if (d.items?.length) allItems.push(...d.items.map(i => ({...i, source: src.name}))); })
+      .catch(() => {})
+  );
+  await Promise.allSettled(promises);
+
   if (!allItems.length) allItems = getFallbackNews('tech');
-  allItems = allItems.slice(0,24).sort((a,b) => new Date(b.pubDate||b.date)-new Date(a.pubDate||a.date));
+  allItems = allItems.slice(0,24).sort((a,b) => new Date(b.pubDate||b.date||0)-new Date(a.pubDate||a.date||0));
   renderNews(container, allItems, 'tech');
   stopBtn(btn);
 }
@@ -1092,18 +1099,20 @@ async function loadMetals(btn) {
   const metals = await fetchMetalPrices();
   const ML = LANGS[currentLang]||LANGS.ar;
   const mNames = METAL_NAMES[currentLang]||METAL_NAMES.en;
-  c.innerHTML = '<div class="grid-4">' + metals.map(m => {
-    const localName = mNames[m.metalKey] || m.name;
-    const unitLabel = m.metalKey==='copper'||m.metalKey==='nickel'||m.metalKey==='zinc' ? ML.lb : ML.oz;
-    return `<div class="price-card ${m.change>=0?'green':'red'}">
-      <div class="card-label">${m.symbol}</div>
-      <div class="card-name" data-metal="${m.metalKey||''}">${localName}</div>
-      <div class="card-price">$${fmt(m.price, m.price>100?2:4)}</div>
-      <div class="card-change ${m.change>=0?'up':'dn'}">
-        ${m.change>=0?'▲':'▼'} ${Math.abs(m.change).toFixed(2)}%
-      </div>
-      <div class="card-unit">${unitLabel}</div>
-    </div>`;
+  c.innerHTML = '<div class="grid-4">' + metals.map(function(m) {
+    var localName = mNames[m.metalKey] || m.name;
+    var isLight = (m.metalKey==='copper'||m.metalKey==='nickel'||m.metalKey==='zinc'||m.metalKey==='aluminium');
+    var unitLabel = isLight ? (ML.lb||'USD/lb') : (ML.oz||'USD/oz');
+    var chgAbs = Math.abs(m.change||0).toFixed(2);
+    return '<div class="price-card ' + ((m.change||0)>=0?'green':'red') + '">' +
+      '<div class="card-label">' + m.symbol + '</div>' +
+      '<div class="card-name" data-metal="' + (m.metalKey||'') + '">' + localName + '</div>' +
+      '<div class="card-price">$' + fmt(m.price, m.price>100?2:4) + '</div>' +
+      '<div class="card-change ' + ((m.change||0)>=0?'up':'dn') + '">' +
+        ((m.change||0)>=0?'▲':'▼') + ' ' + chgAbs + '%' +
+      '</div>' +
+      '<div class="card-unit">' + unitLabel + '</div>' +
+    '</div>';
   }).join('') + '</div>';
   stopBtn(btn);
 }
@@ -1215,26 +1224,31 @@ const fillFallbackStock = m => m.price!==null ? m : {...m, ...fallbackStocks[m.s
 async function loadCrypto(btn) {
   spinBtn(btn);
   const c = document.getElementById('crypto-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
   try {
-    const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=24&page=1&sparkline=false&price_change_percentage=24h');
+    // CoinGecko official free API — as specified in spec
+    const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=24&page=1&sparkline=false&price_change_percentage=24h';
+    const r = await fetch(url, {headers:{Accept:'application/json'}});
     const d = await r.json();
-    if (!d.length) throw new Error('empty');
-    c.innerHTML = '<div class="grid-4">' + d.map(coin => `
-      <div class="price-card ${coin.price_change_percentage_24h>=0?'green':'red'}">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <img src="${coin.image}" width="24" height="24" style="border-radius:50%" onerror="this.style.display='none'">
-          <div class="card-label">${coin.symbol?.toUpperCase()}</div>
-        </div>
-        <div class="card-name">${coin.name}</div>
-        <div class="card-price">$${fmt(coin.current_price, coin.current_price<1?6:2)}</div>
-        <div class="card-change ${coin.price_change_percentage_24h>=0?'up':'dn'}">
-          ${coin.price_change_percentage_24h>=0?'▲':'▼'} ${Math.abs(coin.price_change_percentage_24h||0).toFixed(2)}%
-        </div>
-        <div class="card-unit">حجم السوق: $${fmt(coin.market_cap)}</div>
-      </div>`).join('') + '</div>';
+    if (!d || !d.length) throw new Error('empty');
+    c.innerHTML = '<div class="grid-4">' + d.map(function(coin) {
+      var chg = coin.price_change_percentage_24h || 0;
+      var price = coin.current_price;
+      var priceStr = price >= 1 ? '$' + fmt(price,2) : '$' + fmt(price,5);
+      return '<div class="price-card ' + (chg>=0?'green':'red') + '">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+          '<img src="' + coin.image + '" width="22" height="22" style="border-radius:50%" onerror="this.style.display='none'">' +
+          '<div class="card-label" style="margin:0">' + (coin.symbol||'').toUpperCase() + '</div>' +
+        '</div>' +
+        '<div class="card-name">' + coin.name + '</div>' +
+        '<div class="card-price">' + priceStr + '</div>' +
+        '<div class="card-change ' + (chg>=0?'up':'dn') + '">' + (chg>=0?'▲':'▼') + ' ' + Math.abs(chg).toFixed(2) + '%</div>' +
+        '<div class="card-unit">MCap: $' + fmt(coin.market_cap) + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
   } catch(e) {
-    c.innerHTML = '<div class="error-state">⚠️ تعذّر تحميل بيانات العملات الرقمية. حاول مرة أخرى.</div>';
+    c.innerHTML = '<div class="error-state">' + (LANGS[currentLang]||LANGS.ar).errLoad + '</div>';
   }
   stopBtn(btn);
 }
@@ -1245,31 +1259,70 @@ async function loadCrypto(btn) {
 async function loadOil(btn) {
   spinBtn(btn);
   const c = document.getElementById('oil-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
-  // Use Yahoo Finance for oil futures
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
   const oils = await fetchOilPrices();
-  c.innerHTML = '<div class="grid-4">' + oils.map(renderPriceCard).join('') + '</div>';
+  const ON = OIL_NAMES[currentLang]||OIL_NAMES.en;
+  c.innerHTML = '<div class="grid-4">' + oils.map(function(o) {
+    var localName = ON[o.nameKey] || o.nameKey;
+    var unitStr = L.oilUnit || 'USD/barrel';
+    return '<div class="price-card ' + (o.change>=0?'green':'red') + '">' +
+      '<div class="card-label">' + o.symbol + '</div>' +
+      '<div class="card-name" data-oil-key="' + o.nameKey + '">' + localName + '</div>' +
+      '<div class="card-price">$' + fmt(o.price,2) + '</div>' +
+      '<div class="card-change ' + (o.change>=0?'up':'dn') + '">' + (o.change>=0?'▲':'▼') + ' ' + Math.abs(o.change).toFixed(2) + '%</div>' +
+      '<div class="card-unit">' + unitStr + '</div>' +
+    '</div>';
+  }).join('') + '</div>';
   stopBtn(btn);
 }
-async function fetchOilPrices() {
-  const syms = ['CL=F','BZ=F','NG=F','HO=F','RB=F'];
-  let results = {};
-  try {
-    const r = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms.join(',')}&fields=symbol,shortName,regularMarketPrice,regularMarketChangePercent`);
-    const d = await r.json();
-    (d?.quoteResponse?.result||[]).forEach(q => { results[q.symbol]=q; });
-  } catch(e) {}
 
-  const oils = [
-    { sym:'CL=F', name:'خام غرب تكساس WTI', fb:{price:76.40,change:0.31} },
-    { sym:'BZ=F', name:'خام برنت Brent', fb:{price:80.10,change:0.18} },
-    { sym:'NG=F', name:'الغاز الطبيعي', fb:{price:2.41,change:-1.24} },
-    { sym:'HO=F', name:'زيت التدفئة', fb:{price:2.58,change:0.09} },
-    { sym:'RB=F', name:'البنزين الخام', fb:{price:2.48,change:0.41} },
+const OIL_NAMES = {
+  ar:{ wti:'خام غرب تكساس WTI', brent:'خام برنت Brent', natgas:'الغاز الطبيعي', heating:'زيت التدفئة', gasoline:'البنزين' },
+  en:{ wti:'WTI Crude Oil', brent:'Brent Crude Oil', natgas:'Natural Gas', heating:'Heating Oil', gasoline:'Gasoline' },
+  es:{ wti:'Petróleo Crudo WTI', brent:'Petróleo Crudo Brent', natgas:'Gas Natural', heating:'Combustible', gasoline:'Gasolina' },
+  zh:{ wti:'WTI原油', brent:'布伦特原油', natgas:'天然气', heating:'取暖油', gasoline:'汽油' },
+  fr:{ wti:'Pétrole brut WTI', brent:'Pétrole brut Brent', natgas:'Gaz naturel', heating:'Fioul', gasoline:'Essence' },
+  de:{ wti:'WTI-Rohöl', brent:'Brent-Rohöl', natgas:'Erdgas', heating:'Heizöl', gasoline:'Benzin' },
+  ja:{ wti:'WTI原油', brent:'ブレント原油', natgas:'天然ガス', heating:'灯油', gasoline:'ガソリン' },
+  ko:{ wti:'WTI 원유', brent:'브렌트 원유', natgas:'천연가스', heating:'난방유', gasoline:'가솔린' },
+  pt:{ wti:'Petróleo Bruto WTI', brent:'Petróleo Bruto Brent', natgas:'Gás Natural', heating:'Óleo', gasoline:'Gasolina' },
+  ru:{ wti:'Нефть WTI', brent:'Нефть Brent', natgas:'Природный газ', heating:'Мазут', gasoline:'Бензин' },
+  tr:{ wti:'WTI Ham Petrol', brent:'Brent Ham Petrol', natgas:'Doğalgaz', heating:'Isıtma Yağı', gasoline:'Benzin' },
+  hi:{ wti:'WTI कच्चा तेल', brent:'ब्रेंट कच्चा तेल', natgas:'प्राकृतिक गैस', heating:'हीटिंग ऑयल', gasoline:'गैसोलीन' },
+};
+
+async function fetchOilPrices() {
+  // Yahoo Finance futures — most reliable, no API key
+  const syms = ['CL=F','BZ=F','NG=F','HO=F','RB=F'];
+  const oilDefs = [
+    { nameKey:'wti',     symbol:'WTI',   fb:{price:62.5, change:-1.8} },
+    { nameKey:'brent',   symbol:'Brent', fb:{price:65.8, change:-1.6} },
+    { nameKey:'natgas',  symbol:'NG',    fb:{price:3.42, change:0.9}  },
+    { nameKey:'heating', symbol:'HO',    fb:{price:2.21, change:-0.4} },
+    { nameKey:'gasoline',symbol:'RB',    fb:{price:2.18, change:-0.6} },
   ];
-  return oils.map(o => {
-    const q = results[o.sym];
-    return { symbol:o.sym, name:o.name, price:q?.regularMarketPrice||o.fb.price, change:q?.regularMarketChangePercent||o.fb.change, unit:'USD / برميل' };
+  var yResults = {};
+  try {
+    var url = 'https://query2.finance.yahoo.com/v8/finance/spark?symbols=' + encodeURIComponent(syms.join(',')) + '&range=1d&interval=1d';
+    var r = await fetch(url, {headers:{Accept:'application/json'}});
+    var d = await r.json();
+    (d && d.spark && d.spark.result || []).forEach(function(s) {
+      var m = s.response && s.response[0] && s.response[0].meta;
+      if (m) yResults[s.symbol] = {price:m.regularMarketPrice, change:((m.regularMarketPrice-m.chartPreviousClose)/m.chartPreviousClose)*100};
+    });
+  } catch(e) {
+    try {
+      var r2 = await fetch('https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(syms.join(',')) + '&fields=regularMarketPrice,regularMarketChangePercent', {headers:{Accept:'application/json'}});
+      var d2 = await r2.json();
+      ((d2 && d2.quoteResponse && d2.quoteResponse.result) || []).forEach(function(q) {
+        yResults[q.symbol] = {price:q.regularMarketPrice, change:q.regularMarketChangePercent};
+      });
+    } catch(e2) {}
+  }
+  return oilDefs.map(function(o, i) {
+    var q = yResults[syms[i]];
+    return {nameKey:o.nameKey, name:o.nameKey, symbol:o.symbol, price:(q&&q.price)||o.fb.price, change:(q&&q.change)||o.fb.change};
   });
 }
 
@@ -1277,13 +1330,14 @@ async function fetchOilPrices() {
 //  ⑥ FOREX
 // ═══════════════════════════════════════════════
 let fxRates = {};
-const currencies = {
-  USD:'دولار أمريكي', EUR:'يورو', GBP:'جنيه إسترليني', JPY:'ين ياباني',
-  SAR:'ريال سعودي', AED:'درهم إماراتي', KWD:'دينار كويتي', QAR:'ريال قطري',
-  EGP:'جنيه مصري', TRY:'ليرة تركية', CHF:'فرنك سويسري', CAD:'دولار كندي',
-  AUD:'دولار أسترالي', CNY:'يوان صيني', INR:'روبية هندية', BRL:'ريال برازيلي',
-  MXN:'بيسو مكسيكي', KRW:'وون كوري', SGD:'دولار سنغافوري', HKD:'دولار هونج كونج'
+const CURRENCY_NAMES = {
+  ar:{ USD:'دولار أمريكي',EUR:'يورو',GBP:'جنيه إسترليني',JPY:'ين ياباني',SAR:'ريال سعودي',AED:'درهم إماراتي',KWD:'دينار كويتي',QAR:'ريال قطري',BHD:'دينار بحريني',OMR:'ريال عماني',EGP:'جنيه مصري',TRY:'ليرة تركية',CHF:'فرنك سويسري',CAD:'دولار كندي',AUD:'دولار أسترالي',CNY:'يوان صيني',INR:'روبية هندية',BRL:'ريال برازيلي',SGD:'دولار سنغافوري',ZAR:'راند جنوب أفريقي',MYR:'رينغيت ماليزي',KRW:'وون كوري' },
+  en:{ USD:'US Dollar',EUR:'Euro',GBP:'Brit. Pound',JPY:'Japanese Yen',SAR:'Saudi Riyal',AED:'UAE Dirham',KWD:'Kuwaiti Dinar',QAR:'Qatari Riyal',BHD:'Bahraini Dinar',OMR:'Omani Rial',EGP:'Egyptian Pound',TRY:'Turkish Lira',CHF:'Swiss Franc',CAD:'Canadian Dollar',AUD:'Australian Dollar',CNY:'Chinese Yuan',INR:'Indian Rupee',BRL:'Brazilian Real',SGD:'Singapore Dollar',ZAR:'S. African Rand',MYR:'Malaysian Ringgit',KRW:'South Korean Won' },
+  es:{ USD:'Dólar EE.UU.',EUR:'Euro',GBP:'Libra Esterlina',JPY:'Yen Japonés',SAR:'Riyal Saudí',AED:'Dírham EAU',KWD:'Dinar Kuwaití',QAR:'Riyal Qatarí',BHD:'Dinar Bareiní',OMR:'Rial Omaní',EGP:'Libra Egipcia',TRY:'Lira Turca',CHF:'Franco Suizo',CAD:'Dólar Canadiense',AUD:'Dólar Australiano',CNY:'Yuan Chino',INR:'Rupia India',BRL:'Real Brasileño',SGD:'Dólar de Singapur',ZAR:'Rand Sudafricano',MYR:'Ringgit Malayo',KRW:'Won Surcoreano' },
+  default:{ USD:'US Dollar',EUR:'Euro',GBP:'Pound',JPY:'Yen',SAR:'SAR',AED:'AED',KWD:'KWD',QAR:'QAR',BHD:'BHD',OMR:'OMR',EGP:'EGP',TRY:'TRY',CHF:'CHF',CAD:'CAD',AUD:'AUD',CNY:'CNY',INR:'INR',BRL:'BRL',SGD:'SGD',ZAR:'ZAR',MYR:'MYR',KRW:'KRW' },
 };
+function getCurrencies() { return CURRENCY_NAMES[currentLang] || CURRENCY_NAMES.en; }
+const currencies = { USD:'US Dollar',EUR:'Euro',GBP:'Pound',JPY:'Yen',SAR:'SAR',AED:'AED',KWD:'KWD',QAR:'QAR',BHD:'BHD',OMR:'OMR',EGP:'EGP',TRY:'TRY',CHF:'CHF',CAD:'CAD',AUD:'AUD',CNY:'CNY',INR:'INR',BRL:'BRL',SGD:'SGD',ZAR:'ZAR',MYR:'MYR',KRW:'KRW' };
 async function loadForex(btn) {
   spinBtn(btn);
   const c = document.getElementById('forex-container');
@@ -1309,20 +1363,21 @@ async function loadForex(btn) {
       ['TRY','USD'],['EGP','USD'],['INR','USD'],['BRL','USD'],['SGD','USD'],['MYR','USD'],['ZAR','USD'],
     ];
     const chgMap = { EUR:0.08,GBP:0.14,JPY:-0.22,SAR:0.00,AED:0.01,KWD:0.03,QAR:0.00,BHD:0.00,OMR:0.00,CHF:0.31,CAD:-0.18,AUD:0.42,CNY:-0.11,TRY:-1.24,EGP:-0.08,INR:0.06,BRL:-0.34,SGD:0.19,MYR:0.27,ZAR:-0.56 };
+    const curNames = getCurrencies();
     c.innerHTML = '<div class="grid-4">' + pairs.map(([from]) => {
       const rate = fxRates[from] || 1;
       const usdVal = (1/rate).toFixed(4);
       const chg = chgMap[from] || 0;
-      return `<div class="price-card ${chg>=0?'green':'red'}">
-        <div class="card-label">USD / ${from}</div>
-        <div class="card-name">${currencies[from]||from}</div>
-        <div class="card-price">${fmt(rate,4)}</div>
-        <div class="card-change ${chg>=0?'up':'dn'}">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(2)}%</div>
-        <div class="card-unit">1 USD = ${fmt(rate,4)} ${from} &nbsp;|&nbsp; 1 ${from} = $${usdVal}</div>
-      </div>`;
+      return '<div class="price-card ' + (chg>=0?'green':'red') + '">' +
+        '<div class="card-label">USD / ' + from + '</div>' +
+        '<div class="card-name" data-curr-code="' + from + '">' + (curNames[from]||from) + '</div>' +
+        '<div class="card-price">' + fmt(rate,4) + '</div>' +
+        '<div class="card-change ' + (chg>=0?'up':'dn') + '">' + (chg>=0?'▲':'▼') + ' ' + Math.abs(chg).toFixed(2) + '%</div>' +
+        '<div class="card-unit">1 USD = ' + fmt(rate,4) + ' ' + from + ' | 1 ' + from + ' = $' + usdVal + '</div>' +
+      '</div>';
     }).join('') + '</div>';
   } catch(e) {
-    c.innerHTML = '<div class="error-state">⚠️ تعذّر تحميل بيانات الصرف. حاول مرة أخرى.</div>';
+    c.innerHTML = '<div class="error-state">' + (LANGS[currentLang]||LANGS.ar).errLoad + '</div>';
   }
   stopBtn(btn);
 }
@@ -1330,8 +1385,9 @@ async function loadForex(btn) {
 function populateSelects() {
   const from = document.getElementById('fx-from');
   const to = document.getElementById('fx-to');
-  const opts = Object.entries(currencies).map(([code,name]) =>
-    `<option value="${code}">${code} – ${name}</option>`).join('');
+  const curNames = getCurrencies();
+  const opts = Object.keys(currencies).map(code =>
+    '<option value="' + code + '">' + code + ' – ' + (curNames[code]||code) + '</option>').join('');
   from.innerHTML = opts;
   to.innerHTML = opts;
   from.value = 'USD'; to.value = 'SAR';
@@ -1345,54 +1401,72 @@ function convertCurrency() {
   const result = amount * (fxRates[to] / fxRates[from]);
   document.getElementById('fx-result').classList.add('show');
   document.getElementById('fx-result-val').textContent = fmt(result,4)+' '+to;
-  document.getElementById('fx-result-sub').textContent = `${fmt(amount,2)} ${from} = ${fmt(result,4)} ${to} | سعر 1 ${from} = ${fmt(fxRates[to]/fxRates[from],4)} ${to}`;
+  const Lc = LANGS[currentLang]||LANGS.ar;
+  document.getElementById('fx-result-sub').textContent = Lc.fxNote(fmt(amount,2), from, fmt(result,4), to) + ' | 1 ' + from + ' = ' + fmt(fxRates[to]/fxRates[from],4) + ' ' + to;
 }
 
 // ═══════════════════════════════════════════════
-//  ⑧ DEALS
+//  ⑧ DEALS — Reuters Business RSS + static fallback
 // ═══════════════════════════════════════════════
 async function loadDeals(btn) {
   spinBtn(btn);
   const c = document.getElementById('deals-container');
-  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text" data-i18n-loading="1">جاري التحميل...</div></div>';
+  const L = LANGS[currentLang]||LANGS.ar;
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">' + L.loading + '</div></div>';
 
-  // Fetch M&A news from RSS
-  let deals = [];
-  try {
-    const r = await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://feeds.bloomberg.com/deals/news.rss')+'&count=20');
-    const d = await r.json();
-    if (d.items?.length) deals = d.items;
-  } catch(e) {}
+  var dealLabel = L.dealTypes && L.dealTypes.finance ? L.dealTypes.finance : 'Deal';
+  var deals = [];
+
+  // Try Reuters Business RSS (most reliable no-key source for M&A/deals)
+  var rssUrls = [
+    'https://www.reutersagency.com/feed/?best-topics=business-finance',
+    'https://feeds.marketwatch.com/marketwatch/topstories/',
+  ];
+  var RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
+  for (var i=0; i<rssUrls.length && deals.length<8; i++) {
+    try {
+      var r = await fetch(RSS2JSON + encodeURIComponent(rssUrls[i]) + '&count=12');
+      var d = await r.json();
+      if (d.items && d.items.length) {
+        deals.push(...d.items.slice(0,12).map(function(item) {
+          return {title:item.title, desc:(item.description||'').replace(/<[^>]+>/g,'').substring(0,140), link:item.link||'#', date:item.pubDate, src: i===0?'Reuters':'MarketWatch'};
+        }));
+      }
+    } catch(e) {}
+  }
 
   if (deals.length) {
-    c.innerHTML = '<div class="grid-3">' + deals.slice(0,18).map(item => `
-      <a class="deal-card" href="${item.link||'#'}" target="_blank" rel="noopener" style="text-decoration:none;display:block">
-        <div class="deal-type finance">صفقة</div>
-        <div class="deal-title">${item.title||'—'}</div>
-        <div class="deal-desc">${(item.description||'').replace(/<[^>]+>/g,'').substring(0,140)}</div>
-        <div class="deal-date">${item.pubDate ? timeAgo(item.pubDate) : '--'} | Bloomberg</div>
-      </a>`).join('') + '</div>';
+    c.innerHTML = '<div class="grid-3">' + deals.slice(0,18).map(function(item) {
+      return '<a class="deal-card" href="' + item.link + '" target="_blank" rel="noopener" style="text-decoration:none;display:block">' +
+        '<div class="deal-type finance" data-deal-type="finance">' + dealLabel + '</div>' +
+        '<div class="deal-title">' + (item.title||'—') + '</div>' +
+        '<div class="deal-desc">' + item.desc + '</div>' +
+        '<div class="deal-date">' + (item.date ? timeAgo(item.date) : '--') + ' | ' + item.src + '</div>' +
+      '</a>';
+    }).join('') + '</div>';
   } else {
-    c.innerHTML = '<div class="grid-3">' + getStaticDeals().map(d => `
-      <div class="deal-card">
-        <div class="deal-type ${d.type}">${d.typeLabel}</div>
-        <div class="deal-title">${d.title}</div>
-        <div class="deal-value">${d.value}</div>
-        <div class="deal-desc">${d.desc}</div>
-        <div class="deal-date">${d.date}</div>
-      </div>`).join('') + '</div>';
+    // Static curated deals fallback
+    c.innerHTML = '<div class="grid-3">' + getStaticDeals(L).map(function(d) {
+      return '<div class="deal-card">' +
+        '<div class="deal-type ' + d.type + '" data-deal-type="' + d.type + '">' + (L.dealTypes&&L.dealTypes[d.type]||d.typeLabel) + '</div>' +
+        '<div class="deal-title">' + d.title + '</div>' +
+        '<div class="deal-value">' + d.value + '</div>' +
+        '<div class="deal-desc">' + d.desc + '</div>' +
+        '<div class="deal-date">' + d.date + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
   }
   stopBtn(btn);
 }
 
-function getStaticDeals() {
+function getStaticDeals(L) {
   return [
-    { type:'tech', typeLabel:'tech', title:'Microsoft تستحوذ على Activision Blizzard', value:'$68.7 مليار', desc:'أتمّت Microsoft صفقة الاستحواذ على Activision Blizzard في أكبر صفقة في تاريخ صناعة الألعاب.', date:'2024' },
-    { type:'finance', typeLabel:'مالية', title:'JP Morgan تستحوذ على First Republic Bank', value:'$10.6 مليار', desc:'استحوذ بنك JP Morgan على First Republic Bank في أعقاب انهياره لحماية المودعين.', date:'2024' },
-    { type:'crypto', typeLabel:'رقمية', title:'Ripple تستحوذ على Standard Custody', value:'$250 مليون', desc:'استحوذت Ripple على Standard Custody لتوسيع خدماتها في مجال الحفظ الرقمي المؤسسي.', date:'2024' },
-    { type:'stocks', typeLabel:'أسهم', title:'أرامكو تطرح حصة إضافية في السوق', value:'$11.2 مليار', desc:'أتمّت أرامكو السعودية طرحاً ثانوياً ناجحاً في تداول وسط طلب قياسي من المستثمرين الدوليين.', date:'2024' },
-    { type:'tech', typeLabel:'tech', title:'Google تستحوذ على Wiz للأمن السحابي', value:'$23 مليار', desc:'أعلنت Google عن استحواذها على شركة Wiz الإسرائيلية للأمن السحابي في أكبر صفقة لها.', date:'2024' },
-    { type:'finance', typeLabel:'مالية', title:'Capital One تستحوذ على Discover Financial', value:'$35.3 مليار', desc:'أعلنت Capital One عن صفقة استحواذ ضخمة على Discover Financial لبناء شبكة دفع منافسة.', date:'2024' },
+    { type:'tech',    typeLabel:'Tech',     title:'Microsoft acquires Activision Blizzard',     value:'$68.7B',  desc:'Largest gaming industry acquisition in history.',   date:'2024' },
+    { type:'finance', typeLabel:'Finance',  title:'JP Morgan acquires First Republic Bank',      value:'$10.6B',  desc:'FDIC-assisted acquisition protecting depositors.',   date:'2024' },
+    { type:'crypto',  typeLabel:'Crypto',   title:'Ripple acquires Standard Custody',            value:'$250M',   desc:'Expanding institutional digital asset custody.',     date:'2024' },
+    { type:'stocks',  typeLabel:'Stocks',   title:'Saudi Aramco secondary offering',             value:'$11.2B',  desc:'Successful secondary listing on Tadawul exchange.',  date:'2024' },
+    { type:'tech',    typeLabel:'Tech',     title:'Google acquires Wiz cloud security',          value:'$23B',    desc:'Largest cybersecurity acquisition in history.',      date:'2024' },
+    { type:'finance', typeLabel:'Finance',  title:'Capital One acquires Discover Financial',     value:'$35.3B',  desc:'Building a competing payment network to Visa/MC.',   date:'2024' },
   ];
 }
 
@@ -1463,7 +1537,7 @@ const LANGS = {
     readMore:'قراءة المقال كاملاً ↗',
     usMarkets:'🇺🇸 الأسواق الأمريكية', globalMarkets:'🌍 الأسواق العالمية', saMarket:'🇸🇦 سوق تداول السعودي',
     pt:'نقطة', rial:'ريال', oz:'USD / أونصة', lb:'USD / رطل',
-    loading:'جاري التحميل...', errLoad:'⚠️ تعذّر التحميل. حاول مرة أخرى.',
+    oilUnit:'USD / برميل', loading:'جاري التحميل...', errLoad:'⚠️ تعذّر التحميل. حاول مرة أخرى.',
     dealTypes:{ tech:'تقنية', finance:'مالية', crypto:'رقمية', stocks:'أسهم' },
     readFull:'قراءة المقال ↗',
     savedTxt: (s,p) => `وفّرت: ${s} (خصم ${p}%)`,
@@ -1490,7 +1564,7 @@ const LANGS = {
     readMore:'Read full article ↗',
     usMarkets:'🇺🇸 US Markets', globalMarkets:'🌍 Global Markets', saMarket:'🇸🇦 Saudi Tadawul',
     pt:'pts', rial:'SAR', oz:'USD / oz', lb:'USD / lb',
-    loading:'Loading...', errLoad:'⚠️ Failed to load. Please try again.',
+    oilUnit:'USD / barrel', loading:'Loading...', errLoad:'⚠️ Failed to load. Please try again.',
     dealTypes:{ tech:'Tech', finance:'Finance', crypto:'Crypto', stocks:'Stocks' },
     readFull:'Read Article ↗',
     savedTxt: (s,p) => `You save: ${s} (${p}% off)`,
@@ -1517,7 +1591,7 @@ const LANGS = {
     readMore:'Leer artículo completo ↗',
     usMarkets:'🇺🇸 Mercados EE.UU.', globalMarkets:'🌍 Mercados Globales', saMarket:'🇸🇦 Bolsa Saudí',
     pt:'pts', rial:'SAR', oz:'USD / oz', lb:'USD / lb',
-    loading:'Cargando...', errLoad:'⚠️ Error al cargar. Inténtalo de nuevo.',
+    oilUnit:'USD / barril', loading:'Cargando...', errLoad:'⚠️ Error al cargar. Inténtalo de nuevo.',
     dealTypes:{ tech:'Tecnología', finance:'Finanzas', crypto:'Cripto', stocks:'Acciones' },
     readFull:'Leer Artículo ↗',
     savedTxt: (s,p) => `Ahorras: ${s} (${p}% dto.)`,
@@ -1544,7 +1618,7 @@ const LANGS = {
     readMore:'阅读全文 ↗',
     usMarkets:'🇺🇸 美国市场', globalMarkets:'🌍 全球市场', saMarket:'🇸🇦 沙特市场',
     pt:'点', rial:'里亚尔', oz:'美元/盎司', lb:'美元/磅',
-    loading:'加载中...', errLoad:'⚠️ 加载失败，请重试。',
+    oilUnit:'美元/桶', loading:'加载中...', errLoad:'⚠️ 加载失败，请重试。',
     dealTypes:{ tech:'科技', finance:'金融', crypto:'加密', stocks:'股票' },
     readFull:'阅读文章 ↗',
     savedTxt: (s,p) => `节省：${s}（${p}%折扣）`,
@@ -1571,7 +1645,7 @@ const LANGS = {
     readMore:'Lire l\'article complet ↗',
     usMarkets:'🇺🇸 Marchés US', globalMarkets:'🌍 Marchés Mondiaux', saMarket:'🇸🇦 Bourse Saoudienne',
     pt:'pts', rial:'SAR', oz:'USD / oz', lb:'USD / lb',
-    loading:'Chargement...', errLoad:'⚠️ Échec du chargement. Réessayez.',
+    oilUnit:'USD / baril', loading:'Chargement...', errLoad:'⚠️ Échec du chargement. Réessayez.',
     dealTypes:{ tech:'Tech', finance:'Finance', crypto:'Crypto', stocks:'Actions' },
     readFull:'Lire l\'Article ↗',
     savedTxt: (s,p) => `Vous économisez : ${s} (${p}%)`,
@@ -1598,7 +1672,7 @@ const LANGS = {
     readMore:'Vollständigen Artikel lesen ↗',
     usMarkets:'🇺🇸 US-Märkte', globalMarkets:'🌍 Weltmärkte', saMarket:'🇸🇦 Saudi-Börse',
     pt:'Pkt.', rial:'SAR', oz:'USD / Unze', lb:'USD / lb',
-    loading:'Laden...', errLoad:'⚠️ Laden fehlgeschlagen. Bitte erneut versuchen.',
+    oilUnit:'USD / Barrel', loading:'Laden...', errLoad:'⚠️ Laden fehlgeschlagen. Bitte erneut versuchen.',
     dealTypes:{ tech:'Tech', finance:'Finanzen', crypto:'Krypto', stocks:'Aktien' },
     readFull:'Artikel lesen ↗',
     savedTxt: (s,p) => `Sie sparen: ${s} (${p}% Rabatt)`,
@@ -1625,7 +1699,7 @@ const LANGS = {
     readMore:'全文を読む ↗',
     usMarkets:'🇺🇸 米国市場', globalMarkets:'🌍 世界市場', saMarket:'🇸🇦 サウジ市場',
     pt:'ポイント', rial:'SAR', oz:'USD/オンス', lb:'USD/ポンド',
-    loading:'読み込み中...', errLoad:'⚠️ 読み込みに失敗しました。',
+    oilUnit:'USD/バレル', loading:'読み込み中...', errLoad:'⚠️ 読み込みに失敗しました。',
     dealTypes:{ tech:'テック', finance:'金融', crypto:'暗号資産', stocks:'株式' },
     readFull:'記事を読む ↗',
     savedTxt: (s,p) => `節約額：${s}（${p}%割引）`,
@@ -1652,7 +1726,7 @@ const LANGS = {
     readMore:'전체 기사 읽기 ↗',
     usMarkets:'🇺🇸 미국 시장', globalMarkets:'🌍 글로벌 시장', saMarket:'🇸🇦 사우디 시장',
     pt:'포인트', rial:'SAR', oz:'USD/온스', lb:'USD/파운드',
-    loading:'로딩 중...', errLoad:'⚠️ 로드 실패. 다시 시도하세요.',
+    oilUnit:'USD/배럴', loading:'로딩 중...', errLoad:'⚠️ 로드 실패. 다시 시도하세요.',
     dealTypes:{ tech:'기술', finance:'금융', crypto:'암호화폐', stocks:'주식' },
     readFull:'기사 읽기 ↗',
     savedTxt: (s,p) => `절약: ${s} (${p}% 할인)`,
@@ -1679,7 +1753,7 @@ const LANGS = {
     readMore:'Ler artigo completo ↗',
     usMarkets:'🇺🇸 Mercados EUA', globalMarkets:'🌍 Mercados Globais', saMarket:'🇸🇦 Bolsa Saudita',
     pt:'pts', rial:'SAR', oz:'USD/oz', lb:'USD/lb',
-    loading:'Carregando...', errLoad:'⚠️ Falha ao carregar. Tente novamente.',
+    oilUnit:'USD / barril', loading:'Carregando...', errLoad:'⚠️ Falha ao carregar. Tente novamente.',
     dealTypes:{ tech:'Tecnologia', finance:'Finanças', crypto:'Cripto', stocks:'Ações' },
     readFull:'Ler Artigo ↗',
     savedTxt: (s,p) => `Você economiza: ${s} (${p}%)`,
@@ -1706,7 +1780,7 @@ const LANGS = {
     readMore:'Читать полностью ↗',
     usMarkets:'🇺🇸 Рынки США', globalMarkets:'🌍 Мировые рынки', saMarket:'🇸🇦 Саудовский рынок',
     pt:'пунктов', rial:'SAR', oz:'USD/унция', lb:'USD/фунт',
-    loading:'Загрузка...', errLoad:'⚠️ Ошибка загрузки. Попробуйте снова.',
+    oilUnit:'USD / баррель', loading:'Загрузка...', errLoad:'⚠️ Ошибка загрузки. Попробуйте снова.',
     dealTypes:{ tech:'Технологии', finance:'Финансы', crypto:'Крипто', stocks:'Акции' },
     readFull:'Читать статью ↗',
     savedTxt: (s,p) => `Экономия: ${s} (скидка ${p}%)`,
@@ -1733,7 +1807,7 @@ const LANGS = {
     readMore:'Tam makaleyi oku ↗',
     usMarkets:'🇺🇸 ABD Piyasaları', globalMarkets:'🌍 Küresel Piyasalar', saMarket:'🇸🇦 Suudi Piyasası',
     pt:'puan', rial:'SAR', oz:'USD/ons', lb:'USD/lb',
-    loading:'Yükleniyor...', errLoad:'⚠️ Yükleme başarısız. Tekrar deneyin.',
+    oilUnit:'USD / varil', loading:'Yükleniyor...', errLoad:'⚠️ Yükleme başarısız. Tekrar deneyin.',
     dealTypes:{ tech:'Teknoloji', finance:'Finans', crypto:'Kripto', stocks:'Hisseler' },
     readFull:'Makaleyi Oku ↗',
     savedTxt: (s,p) => `Tasarruf: ${s} (%${p} indirim)`,
@@ -1760,7 +1834,7 @@ const LANGS = {
     readMore:'पूरा लेख पढ़ें ↗',
     usMarkets:'🇺🇸 अमेरिकी बाज़ार', globalMarkets:'🌍 वैश्विक बाज़ार', saMarket:'🇸🇦 सऊदी बाज़ार',
     pt:'अंक', rial:'SAR', oz:'USD/औंस', lb:'USD/पाउंड',
-    loading:'लोड हो रहा है...', errLoad:'⚠️ लोड विफल। पुनः प्रयास करें।',
+    oilUnit:'USD / बैरल', loading:'लोड हो रहा है...', errLoad:'⚠️ लोड विफल। पुनः प्रयास करें।',
     dealTypes:{ tech:'तकनीक', finance:'वित्त', crypto:'क्रिप्टो', stocks:'शेयर' },
     readFull:'लेख पढ़ें ↗',
     savedTxt: (s,p) => `बचत: ${s} (${p}% छूट)`,
@@ -1925,6 +1999,87 @@ function setLang(lang) {
     const key = el.getAttribute('data-i18n');
     if (L[key]) el.textContent = L[key];
   });
+
+  // ⑱ Oil card names (already loaded cards)
+  const ON = OIL_NAMES[lang]||OIL_NAMES.en;
+  document.querySelectorAll('[data-oil-key]').forEach(el => {
+    const key = el.getAttribute('data-oil-key');
+    if (ON[key]) el.textContent = ON[key];
+  });
+  // Oil unit labels
+  document.querySelectorAll('[data-oil-key]').forEach(el => {
+    const card = el.closest('.price-card');
+    if (card) { const u = card.querySelector('.card-unit'); if(u) u.textContent = L.oilUnit||'USD/barrel'; }
+  });
+
+  // ⑲ Metal card names
+  const MN = METAL_NAMES[lang]||METAL_NAMES.en;
+  document.querySelectorAll('[data-metal]').forEach(el => {
+    const key = el.getAttribute('data-metal');
+    if (MN[key]) el.textContent = MN[key];
+  });
+  // Metal unit labels
+  document.querySelectorAll('[data-metal]').forEach(el => {
+    const key = el.getAttribute('data-metal');
+    const card = el.closest('.price-card');
+    if (card) {
+      const u = card.querySelector('.card-unit');
+      if (u) u.textContent = (key==='copper'||key==='nickel'||key==='zinc') ? L.lb : L.oz;
+    }
+  });
+
+  // ⑳ Currency card names
+  const curNames = CURRENCY_NAMES[lang]||CURRENCY_NAMES.en;
+  document.querySelectorAll('[data-curr-code]').forEach(el => {
+    const code = el.getAttribute('data-curr-code');
+    if (curNames[code]) el.textContent = curNames[code];
+  });
+
+  // ㉑ News tags already rendered
+  document.querySelectorAll('.news-tag[data-tag]').forEach(el => {
+    const key = el.getAttribute('data-tag');
+    if (L.newsTag && L.newsTag[key]) el.textContent = L.newsTag[key];
+  });
+
+  // ㉒ "Read more" links already rendered
+  document.querySelectorAll('[data-i18n="readMore"]').forEach(el => {
+    el.textContent = L.readMore;
+  });
+
+  // ㉓ Deal type badges
+  document.querySelectorAll('[data-deal-type]').forEach(el => {
+    const key = el.getAttribute('data-deal-type');
+    if (L.dealTypes && L.dealTypes[key]) el.textContent = L.dealTypes[key];
+  });
+
+  // ㉔ Error states
+  document.querySelectorAll('.error-state').forEach(el => {
+    if (el.textContent.includes('⚠️')) el.textContent = L.errLoad;
+  });
+
+  // ㉕ Stock section headings
+  const sn = STOCK_NAMES[lang]||STOCK_NAMES.en;
+  document.querySelectorAll('[data-market-label]').forEach(el => {
+    const key = el.getAttribute('data-market-label');
+    if (sn[key]) el.textContent = sn[key];
+  });
+
+  // ㉖ Repopulate forex selects with new language names
+  populateSelects();
+
+  // ㉗ Footer
+  const footer = document.querySelector('[data-i18n="footer"]');
+  if (footer) footer.innerHTML = L.footer;
+
+  // ㉘ Calc result labels
+  const afterDiscEl = document.querySelector('[data-i18n="afterDisc"]');
+  const beforeDiscEl = document.querySelector('[data-i18n="beforeDisc"]');
+  if (afterDiscEl) afterDiscEl.textContent = L.afterDisc;
+  if (beforeDiscEl) beforeDiscEl.textContent = L.beforeDisc;
+
+  // ㉙ Converter title
+  const convTitle2 = document.querySelector('[data-i18n="converterTitle"]');
+  if (convTitle2) convTitle2.textContent = L.converterTitle;
 
   // Select sync
   const sel = document.getElementById('lang-select');
