@@ -1277,19 +1277,6 @@ function calcB() {
   document.getElementById('res-b-save').textContent = L.discValTxt(fmt(savings,2),pctB);
 }
 
-// ── Claude API ────────────────────────────────────────
-async function askClaude(prompt, maxTok) {
-  maxTok = maxTok||1500;
-  var resp = await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok,
-      messages:[{role:'user',content:prompt}]})
-  });
-  var data = await resp.json();
-  var text = (data.content&&data.content[0]&&data.content[0].text)||'[]';
-  return text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-}
 
 // ── Static ticker data (shown immediately) ────────────
 function applyStaticTickers() {
@@ -1346,9 +1333,11 @@ async function loadEcoNews(btn) {
   spinBtn(btn);
   var container = document.getElementById('eco-news-container');
   var L = getLang();
-  container.innerHTML = loadingHTML(L.loading);
-  var items = [];
-  // Try RSS via rss2json
+  // SHOW FALLBACK IMMEDIATELY — no waiting
+  var items = getFallbackNews('economy');
+  renderNews(container, items);
+  stopBtn(btn);
+  // Try RSS in background — update if it works
   var ecoFeeds = [
     {url:'https://feeds.marketwatch.com/marketwatch/topstories/',name:'MarketWatch'},
     {url:'https://www.cnbc.com/id/20910258/device/rss/rss.html',name:'CNBC'},
@@ -1356,37 +1345,31 @@ async function loadEcoNews(btn) {
     {url:'https://feeds.bloomberg.com/markets/news.rss',name:'Bloomberg'},
   ];
   var rssBase = 'https://api.rss2json.com/v1/api.json?rss_url=';
+  var liveItems = [];
   try {
     var rssPromises = ecoFeeds.map(function(feed) {
-      return fetch(rssBase+encodeURIComponent(feed.url)+'&count=4')
+      return fetch(rssBase+encodeURIComponent(feed.url)+'&count=5')
         .then(function(r){return r.json();})
-        .then(function(d){if(d.items&&d.items.length)items=items.concat(d.items.slice(0,4).map(function(i){return Object.assign({},i,{source:feed.name});}));})
+        .then(function(d){if(d.items&&d.items.length){liveItems=liveItems.concat(d.items.slice(0,5).map(function(i){return Object.assign({},i,{source:feed.name});}));}})
         .catch(function(){});
     });
     await Promise.allSettled(rssPromises);
+    if (liveItems.length >= 4) {
+      liveItems = liveItems.slice(0,20).sort(function(a,b){return new Date(b.pubDate||0)-new Date(a.pubDate||0);});
+      renderNews(container, liveItems);
+    }
   } catch(e) {}
-  // If RSS got nothing, use Claude AI
-  if (items.length < 2) {
-    try {
-      var langName = {ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
-      var ecoPrompt = 'Generate 10 realistic financial/economic news for April 2025. Cover: US-China tariff war, Fed rates, oil prices ~$65, gold ~$3200, market volatility. Language: '+langName+'. Return ONLY a JSON array, no markdown:\n[{"title":"...","description":"150 word summary...","source":"Reuters|Bloomberg|CNBC|MarketWatch|Financial Times","link":"#","pubDate":"2025-04-15T10:00:00Z","_tag":"eco|mkt|fin|ana"}]';
-      var ecoText = await askClaude(ecoPrompt, 2500);
-      var parsed = JSON.parse(ecoText);
-      if (Array.isArray(parsed)) items = parsed;
-    } catch(e) {}
-  }
-  if (!items.length) items = getFallbackNews('economy');
-  items = items.slice(0,20).sort(function(a,b){return new Date(b.pubDate||0)-new Date(a.pubDate||0);});
-  renderNews(container, items);
-  stopBtn(btn);
 }
+
 
 async function loadTechNews(btn) {
   spinBtn(btn);
   var container = document.getElementById('tech-news-container');
-  var L = getLang();
-  container.innerHTML = loadingHTML(L.loading);
-  var items = [];
+  // SHOW FALLBACK IMMEDIATELY
+  var items = getFallbackNews('tech');
+  renderNews(container, items, 'tech');
+  stopBtn(btn);
+  // Try RSS in background
   var techFeeds = [
     {url:'https://techcrunch.com/feed/',name:'TechCrunch'},
     {url:'https://www.theverge.com/rss/index.xml',name:'The Verge'},
@@ -1394,32 +1377,22 @@ async function loadTechNews(btn) {
     {url:'https://www.wired.com/feed/rss',name:'Wired'},
   ];
   var rssBase2 = 'https://api.rss2json.com/v1/api.json?rss_url=';
+  var liveItems2 = [];
   try {
     var techPromises = techFeeds.map(function(feed) {
-      return fetch(rssBase2+encodeURIComponent(feed.url)+'&count=4')
+      return fetch(rssBase2+encodeURIComponent(feed.url)+'&count=5')
         .then(function(r){return r.json();})
-        .then(function(d){if(d.items&&d.items.length)items=items.concat(d.items.slice(0,4).map(function(i){return Object.assign({},i,{source:feed.name});}));})
+        .then(function(d){if(d.items&&d.items.length){liveItems2=liveItems2.concat(d.items.slice(0,5).map(function(i){return Object.assign({},i,{source:feed.name});}));}})
         .catch(function(){});
     });
     await Promise.allSettled(techPromises);
+    if (liveItems2.length >= 4) {
+      liveItems2 = liveItems2.slice(0,20).sort(function(a,b){return new Date(b.pubDate||0)-new Date(a.pubDate||0);});
+      renderNews(container, liveItems2, 'tech');
+    }
   } catch(e) {}
-  if (items.length < 2) {
-    try {
-      var langName2 = {ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
-      var techPrompt = 'Generate 10 realistic tech news articles for April 2025. Cover: AI models (Claude, GPT, Gemini), Nvidia chips, Apple, Google, Microsoft, Meta, cybersecurity. Language: '+langName2+'. Return ONLY a JSON array, no markdown:\n[{"title":"...","description":"150 word summary...","source":"TechCrunch|The Verge|Wired|Ars Technica","link":"#","pubDate":"2025-04-15T10:00:00Z","_tag":"tech|inn|dev"}]';
-      var techText = await askClaude(techPrompt, 2500);
-      var parsed2 = JSON.parse(techText);
-      if (Array.isArray(parsed2)) items = parsed2;
-    } catch(e) {}
-  }
-  if (!items.length) items = getFallbackNews('tech');
-  items = items.slice(0,20).sort(function(a,b){return new Date(b.pubDate||0)-new Date(a.pubDate||0);});
-  renderNews(container, items, 'tech');
-  stopBtn(btn);
 }
 
-// ── News render ────────────────────────────────────────
-var NEWS_TAG_KEYS = {Reuters:'mkt',Bloomberg:'eco',CNBC:'mkt','Financial Times':'fin','The Economist':'ana',MarketWatch:'mkt',TechCrunch:'tech','The Verge':'tech',Wired:'inn','Ars Technica':'dev','NYT Business':'eco',default:'news'};
 
 function renderNews(container, items, type) {
   var L = getLang();
@@ -1475,64 +1448,53 @@ async function loadMetals(btn) {
   spinBtn(btn);
   var c = document.getElementById('metals-container');
   var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  var metals = await fetchMetalPrices();
-  var MN = METAL_NAMES[currentLang]||METAL_NAMES.en;
-  var html2 = '<div class="grid-4">';
-  metals.forEach(function(m) {
-    var isLight = ['copper','nickel','zinc','aluminium'].indexOf(m.metalKey)>=0;
-    var unit = isLight?(L.lb||'USD/lb'):(L.oz||'USD/oz');
-    var name = MN[m.metalKey]||m.name;
-    var chg = m.change||0;
-    html2 += '<div class="price-card '+(chg>=0?'green':'red')+'">';
-    html2 += '<div class="card-label">'+m.symbol+'</div>';
-    html2 += '<div class="card-name" data-metal="'+m.metalKey+'">'+name+'</div>';
-    html2 += '<div class="card-price">$'+fmt(m.price,m.price>100?2:4)+'</div>';
-    html2 += '<div class="card-change '+(chg>=0?'up':'dn')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg).toFixed(2)+'%</div>';
-    html2 += '<div class="card-unit">'+unit+'</div></div>';
-  });
-  html2 += '</div>';
-  c.innerHTML = html2;
-  stopBtn(btn);
-}
-
-async function fetchMetalPrices() {
-  var fallbackMetals = [
-    {symbol:'XAU',metalKey:'gold',     name:'Gold',     price:3234, change:0.82},
-    {symbol:'XAG',metalKey:'silver',   name:'Silver',   price:32.5, change:1.14},
-    {symbol:'XPT',metalKey:'platinum', name:'Platinum', price:968,  change:-0.24},
-    {symbol:'XPD',metalKey:'palladium',name:'Palladium',price:940,  change:-0.89},
-    {symbol:'HG', metalKey:'copper',   name:'Copper',   price:4.65, change:0.56},
-    {symbol:'RHO',metalKey:'rhodium',  name:'Rhodium',  price:4550, change:0.0},
-    {symbol:'NI', metalKey:'nickel',   name:'Nickel',   price:7.12, change:0.31},
-    {symbol:'ZN', metalKey:'zinc',     name:'Zinc',     price:1.22, change:-0.17},
+  // Show static immediately
+  var metals = [
+    {symbol:'XAU',metalKey:'gold',     price:3234, change:0.82},
+    {symbol:'XAG',metalKey:'silver',   price:32.5, change:1.14},
+    {symbol:'XPT',metalKey:'platinum', price:968,  change:-0.24},
+    {symbol:'XPD',metalKey:'palladium',price:940,  change:-0.89},
+    {symbol:'HG', metalKey:'copper',   price:4.65, change:0.56},
+    {symbol:'RHO',metalKey:'rhodium',  price:4550, change:0.0},
+    {symbol:'NI', metalKey:'nickel',   price:7.12, change:0.31},
+    {symbol:'ZN', metalKey:'zinc',     price:1.22, change:-0.17},
   ];
+  renderMetals(c, metals, L);
+  stopBtn(btn);
+  // Try live in background
   try {
     var mr = await fetch('https://api.metals.live/v1/spot');
     var md = await mr.json();
-    if (Array.isArray(md)&&md.length) {
+    if (Array.isArray(md) && md.length >= 4) {
       var mSymMap={gold:'XAU',silver:'XAG',platinum:'XPT',palladium:'XPD',copper:'HG',rhodium:'RHO',nickel:'NI',zinc:'ZN'};
-      var mResult = md.filter(function(m){return parseFloat(m.price)>0;}).slice(0,8).map(function(m) {
+      var live = md.filter(function(m){return parseFloat(m.price)>0;}).slice(0,8).map(function(m){
         return {symbol:mSymMap[m.metal?.toLowerCase()]||m.metal?.substring(0,3).toUpperCase(),
-          metalKey:m.metal?.toLowerCase()||'',name:m.metal,
-          price:parseFloat(m.price),change:parseFloat(m.change||(Math.random()*2-1))};
+          metalKey:m.metal?.toLowerCase()||'',price:parseFloat(m.price),change:parseFloat(m.change||0)};
       });
-      if (mResult.length>=4) return mResult;
+      if (live.length>=4) renderMetals(c, live, getLang());
     }
   } catch(e) {}
-  return fallbackMetals;
 }
 
-// ── Stocks ─────────────────────────────────────────────
-
-function renderPriceCard(m) {
-  return '<div class="price-card '+(m.change>=0?'green':'red')+'">'+
-    '<div class="card-label">'+m.symbol+'</div>'+
-    '<div class="card-name">'+m.name+'</div>'+
-    '<div class="card-price">'+fmt(m.price,0)+'</div>'+
-    '<div class="card-change '+(m.change>=0?'up':'dn')+'">'+(m.change>=0?'▲':'▼')+' '+Math.abs(m.change).toFixed(2)+'%</div>'+
-    '<div class="card-unit">'+(m.unit||'pts')+'</div></div>';
+function renderMetals(c, metals, L) {
+  var MN = METAL_NAMES[currentLang]||METAL_NAMES.en;
+  var h='<div class="grid-4">';
+  metals.forEach(function(m) {
+    var isLight=['copper','nickel','zinc','aluminium'].indexOf(m.metalKey)>=0;
+    var unit=isLight?(L.lb||'USD/lb'):(L.oz||'USD/oz');
+    var name=MN[m.metalKey]||m.metalKey||m.symbol;
+    var chg=m.change||0;
+    h+='<div class="price-card '+(chg>=0?'green':'red')+'">';
+    h+='<div class="card-label">'+m.symbol+'</div>';
+    h+='<div class="card-name" data-metal="'+m.metalKey+'">'+name+'</div>';
+    h+='<div class="card-price">$'+fmt(m.price,m.price>100?2:4)+'</div>';
+    h+='<div class="card-change '+(chg>=0?'up':'dn')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg).toFixed(2)+'%</div>';
+    h+='<div class="card-unit">'+unit+'</div></div>';
+  });
+  h+='</div>';
+  c.innerHTML=h;
 }
+
 
 async function loadStocks(btn) {
   spinBtn(btn);
@@ -1615,22 +1577,45 @@ async function loadOil(btn) {
   spinBtn(btn);
   var c = document.getElementById('oil-container');
   var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
   var ON = OIL_NAMES[currentLang]||OIL_NAMES.en;
-  var oilPrices = await fetchOilPrices();
-  var html5='<div class="grid-4">';
-  oilPrices.forEach(function(o) {
-    html5+='<div class="price-card '+(o.change>=0?'green':'red')+'">';
-    html5+='<div class="card-label">'+o.symbol+'</div>';
-    html5+='<div class="card-name" data-oil-key="'+o.nameKey+'">'+( ON[o.nameKey]||o.nameKey)+'</div>';
-    html5+='<div class="card-price">$'+fmt(o.price,2)+'</div>';
-    html5+='<div class="card-change '+(o.change>=0?'up':'dn')+'">'+(o.change>=0?'▲':'▼')+' '+Math.abs(o.change).toFixed(2)+'%</div>';
-    html5+='<div class="card-unit">'+(L.oilUnit||'USD/barrel')+'</div></div>';
-  });
-  html5+='</div>';
-  c.innerHTML=html5;
+  var oilFb = [
+    {nameKey:'wti',symbol:'WTI',price:62.5,change:-1.8},
+    {nameKey:'brent',symbol:'Brent',price:65.8,change:-1.6},
+    {nameKey:'natgas',symbol:'NG',price:3.42,change:0.9},
+    {nameKey:'heating',symbol:'HO',price:2.21,change:-0.4},
+    {nameKey:'gasoline',symbol:'RB',price:2.18,change:-0.6},
+  ];
+  renderOilCards(c, oilFb, ON, L);
   stopBtn(btn);
+  // Try live via proxy
+  try {
+    var oilSyms=['CL=F','BZ=F','NG=F','HO=F','RB=F'];
+    var oilT='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(oilSyms.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
+    var oilR=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(oilT));
+    var oilO=await oilR.json();
+    var oilD=JSON.parse(oilO.contents);
+    var oilMap={};
+    ((oilD&&oilD.quoteResponse&&oilD.quoteResponse.result)||[]).forEach(function(q){oilMap[q.symbol]={price:q.regularMarketPrice,change:q.regularMarketChangePercent};});
+    var livePrices=oilFb.map(function(o,i){var q=oilMap[oilSyms[i]]||o;return {nameKey:o.nameKey,symbol:o.symbol,price:q.price||o.price,change:q.change||o.change};});
+    renderOilCards(c, livePrices, ON, getLang());
+  } catch(e) {}
 }
+
+function renderOilCards(c, prices, ON, L) {
+  var h='<div class="grid-4">';
+  prices.forEach(function(o) {
+    h+='<div class="price-card '+(o.change>=0?'green':'red')+'">';
+    h+='<div class="card-label">'+o.symbol+'</div>';
+    h+='<div class="card-name" data-oil-key="'+o.nameKey+'">'+(ON[o.nameKey]||o.nameKey)+'</div>';
+    h+='<div class="card-price">$'+fmt(o.price,2)+'</div>';
+    h+='<div class="card-change '+(o.change>=0?'up':'dn')+'">'+(o.change>=0?'▲':'▼')+' '+Math.abs(o.change).toFixed(2)+'%</div>';
+    h+='<div class="card-unit">'+(L.oilUnit||'USD/barrel')+'</div></div>';
+  });
+  h+='</div>';
+  c.innerHTML=h;
+}
+
+
 async function fetchOilPrices() {
   var oilSyms=['CL=F','BZ=F','NG=F','HO=F','RB=F'];
   var oilDefs=[
@@ -1658,30 +1643,42 @@ async function loadForex(btn) {
   spinBtn(btn);
   var c = document.getElementById('forex-container');
   var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  try {
-    var fxR=await fetch('https://open.er-api.com/v6/latest/USD');
-    var fxD=await fxR.json();
-    fxRates = fxD.rates||DEFAULT_FX;
-  } catch(e) { fxRates = DEFAULT_FX; }
+  // Show default rates immediately
+  if (Object.keys(fxRates).length < 2) fxRates = Object.assign({}, DEFAULT_FX);
   populateSelects();
+  renderForexCards(c, L);
+  stopBtn(btn);
+  // Try live in background
+  try {
+    var fxR = await fetch('https://open.er-api.com/v6/latest/USD');
+    var fxD = await fxR.json();
+    if (fxD.rates && Object.keys(fxD.rates).length > 5) {
+      fxRates = fxD.rates;
+      populateSelects();
+      renderForexCards(c, getLang());
+    }
+  } catch(e) {}
+}
+
+function renderForexCards(c, L) {
   var CN = CURRENCY_NAMES[currentLang]||CURR_LIST;
   var fxPairs = ['EUR','GBP','JPY','SAR','AED','KWD','QAR','BHD','OMR','CHF','CAD','AUD','CNY','TRY','EGP','INR','BRL','SGD','ZAR','MYR'];
-  var html6='<div class="grid-4">';
+  var h='<div class="grid-4">';
   fxPairs.forEach(function(code) {
-    var rate=fxRates[code]||1;
+    var rate=fxRates[code]||DEFAULT_FX[code]||1;
     var chgFx=FX_CHG[code]||0;
-    html6+='<div class="price-card '+(chgFx>=0?'green':'red')+'">';
-    html6+='<div class="card-label">USD/'+code+'</div>';
-    html6+='<div class="card-name" data-curr-code="'+code+'">'+(CN[code]||code)+'</div>';
-    html6+='<div class="card-price">'+fmt(rate,4)+'</div>';
-    html6+='<div class="card-change '+(chgFx>=0?'up':'dn')+'">'+(chgFx>=0?'▲':'▼')+' '+Math.abs(chgFx).toFixed(2)+'%</div>';
-    html6+='<div class="card-unit">1 USD = '+fmt(rate,4)+' '+code+'</div></div>';
+    h+='<div class="price-card '+(chgFx>=0?'green':'red')+'">';
+    h+='<div class="card-label">USD/'+code+'</div>';
+    h+='<div class="card-name" data-curr-code="'+code+'">'+(CN[code]||code)+'</div>';
+    h+='<div class="card-price">'+fmt(rate,4)+'</div>';
+    h+='<div class="card-change '+(chgFx>=0?'up':'dn')+'">'+(chgFx>=0?'▲':'▼')+' '+Math.abs(chgFx).toFixed(2)+'%</div>';
+    h+='<div class="card-unit">1 USD = '+fmt(rate,4)+' '+code+'</div></div>';
   });
-  html6+='</div>';
-  c.innerHTML=html6;
-  stopBtn(btn);
+  h+='</div>';
+  c.innerHTML=h;
 }
+
+
 function populateSelects() {
   var fromEl=document.getElementById('fx-from');
   var toEl=document.getElementById('fx-to');
@@ -1707,28 +1704,22 @@ async function loadDeals(btn) {
   spinBtn(btn);
   var c = document.getElementById('deals-container');
   var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  var dealItems = [];
-  try {
-    var langNameD={ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
-    var dealPrompt='Generate 9 major financial deals and M&A transactions from Q1-Q2 2025. Include tech, finance, crypto, Middle East investments. Language: '+langNameD+'. Return ONLY JSON array:\n[{"title":"...","value":"$XB","desc":"...","type":"tech|finance|crypto|stocks","date":"Q1 2025"}]';
-    var dealText=await askClaude(dealPrompt,1500);
-    var dealParsed=JSON.parse(dealText);
-    if (Array.isArray(dealParsed)) dealItems=dealParsed;
-  } catch(e) {}
-  if (!dealItems.length) {
-    dealItems=[
-      {type:'tech',title:'Microsoft + Activision',value:'$68.7B',desc:'Largest gaming acquisition in history.',date:'2024'},
-      {type:'finance',title:'Capital One + Discover',value:'$35.3B',desc:'Building a rival to Visa/Mastercard.',date:'2024'},
-      {type:'crypto',title:'Ripple + Standard Custody',value:'$250M',desc:'Institutional crypto custody expansion.',date:'2024'},
-      {type:'stocks',title:'Saudi Aramco offering',value:'$11.2B',desc:'Secondary listing on Tadawul exchange.',date:'2024'},
-      {type:'tech',title:'Google + Wiz',value:'$23B',desc:'Largest cybersecurity acquisition ever.',date:'2024'},
-      {type:'finance',title:'JPMorgan + First Republic',value:'$10.6B',desc:'FDIC-assisted bank rescue acquisition.',date:'2024'},
-    ];
-  }
+  // SHOW STATIC DEALS IMMEDIATELY
+  var dealItems = [
+    {type:'tech',title:'Microsoft + Activision Blizzard',value:'$68.7B',desc:'Largest gaming acquisition in history. Microsoft gains Call of Duty, World of Warcraft, and 30+ gaming franchises.',date:'2024'},
+    {type:'finance',title:'Capital One + Discover Financial',value:'$35.3B',desc:'Creating a rival payment network to challenge Visa and Mastercard in consumer credit and digital payments.',date:'2024'},
+    {type:'crypto',title:'Ripple + Standard Custody',value:'$250M',desc:'Expanding institutional digital asset custody services globally, targeting banks and hedge funds.',date:'2024'},
+    {type:'stocks',title:'Saudi Aramco Secondary Offering',value:'$11.2B',desc:'Successful secondary listing on Tadawul exchange with record demand from international institutional investors.',date:'2024'},
+    {type:'tech',title:'Google + Wiz Cloud Security',value:'$23B',desc:'Google largest-ever acquisition, targeting enterprise cloud security market dominated by Microsoft and CrowdStrike.',date:'2024'},
+    {type:'finance',title:'JPMorgan + First Republic Bank',value:'$10.6B',desc:'FDIC-assisted acquisition following the collapse of First Republic, protecting depositors and stabilizing markets.',date:'2024'},
+    {type:'tech',title:'Cisco + Splunk',value:'$28B',desc:'Cybersecurity and data analytics mega-deal creating a dominant player in enterprise security operations.',date:'2024'},
+    {type:'stocks',title:'Saudi PIF Invests in Chinese EV Maker',value:'$2.2B',desc:'Saudi sovereign wealth fund deepens EV sector exposure through strategic stake in major Chinese electric vehicle manufacturer.',date:'2025'},
+    {type:'crypto',title:'BlackRock Bitcoin ETF Hits $20B AUM',value:'$20B',desc:'BlackRock IBIT becomes fastest ETF in history to reach $20B in assets under management, driving institutional crypto adoption.',date:'2025'},
+  ];
   var html7='<div class="grid-3">';
   dealItems.forEach(function(d) {
-    html7+='<div class="deal-card"><div class="deal-type '+d.type+'" data-deal-type="'+d.type+'">'+(L.dealTypes&&L.dealTypes[d.type]||d.type)+'</div>';
+    var L2 = getLang();
+    html7+='<div class="deal-card"><div class="deal-type '+d.type+'" data-deal-type="'+d.type+'">'+(L2.dealTypes&&L2.dealTypes[d.type]||d.type)+'</div>';
     html7+='<div class="deal-title">'+d.title+'</div><div class="deal-value">'+d.value+'</div>';
     html7+='<div class="deal-desc">'+d.desc+'</div><div class="deal-date">'+d.date+'</div></div>';
   });
@@ -1737,7 +1728,7 @@ async function loadDeals(btn) {
   stopBtn(btn);
 }
 
-// ── Fallback news ─────────────────────────────────────
+
 function getFallbackNews(type) {
   var now=new Date().toISOString();
   if (type==='tech') return [
