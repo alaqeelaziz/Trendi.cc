@@ -772,639 +772,12 @@
 
 
 <script>
-// ════════════════════════════════════════════════════
-//  TRENDI.CC — All variables scoped inside functions
-//  No const/let at global level = no duplicate errors
-// ════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  STEP 1 — DATA FIRST (LANGS, names, rates)
+//  All functions below depend on these — must be defined first
+// ═══════════════════════════════════════════════════════════
 
-// ═══════════════════════════════════════════════════════
-//  TRENDI.CC — Clean JS (no duplicate declarations)
-// ═══════════════════════════════════════════════════════
-
-// ── Helpers ──────────────────────────────────────────
-function fmt(n, dec) {
-  dec = dec === undefined ? 2 : dec;
-  if (n === null || n === undefined || isNaN(n)) return '--';
-  var num = parseFloat(n);
-  if (num >= 1e12) return (num/1e12).toFixed(2)+'T';
-  if (num >= 1e9)  return (num/1e9).toFixed(2)+'B';
-  if (num >= 1e6)  return (num/1e6).toFixed(2)+'M';
-  return num.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
-}
-function timeAgo(ds) {
-  if (!ds) return '--';
-  var diff = Math.floor((Date.now()-new Date(ds))/1000);
-  if (diff < 60)    return 'Now';
-  if (diff < 3600)  return Math.floor(diff/60)+'m ago';
-  if (diff < 86400) return Math.floor(diff/3600)+'h ago';
-  return Math.floor(diff/86400)+'d ago';
-}
-function spinBtn(b) { if(b) b.classList.add('spinning'); }
-function stopBtn(b)  { if(b) b.classList.remove('spinning'); }
-function setTick(id1, id2, text, isUp) {
-  [id1,id2].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = text;
-    el.className = isUp===true?'up':isUp===false?'dn':'';
-  });
-}
-function loadingHTML(msg) {
-  return '<div class="loading-state"><div class="spinner"></div><div class="loading-text">'+msg+'</div></div>';
-}
-function errHTML(msg) {
-  return '<div class="error-state">'+msg+'</div>';
-}
-function getLang() { return LANGS[currentLang]||LANGS.ar; }
-
-// ── Theme ─────────────────────────────────────────────
-function toggleTheme() {
-  document.body.classList.toggle('light');
-  document.getElementById('theme-btn').textContent = document.body.classList.contains('light')? '🌙':'☀️';
-  localStorage.setItem('trendi-theme', document.body.classList.contains('light')?'light':'dark');
-}
-if (localStorage.getItem('trendi-theme')==='light') document.body.classList.add('light');
-
-// ── Tabs ──────────────────────────────────────────────
-var loadedTabs = {};
-function switchTab(id) {
-  document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
-  document.getElementById('pane-'+id).classList.add('active');
-  document.getElementById('btn-'+id).classList.add('active');
-  if (!loadedTabs[id]) { loadTab(id); loadedTabs[id]=true; }
-}
-function loadTab(id) {
-  var map = {metals:loadMetals,stocks:loadStocks,crypto:loadCrypto,
-    oil:loadOil,forex:loadForex,'news-tech':loadTechNews,deals:loadDeals};
-  if (map[id]) map[id](null);
-}
-function switchCalc(mode) {
-  document.getElementById('calc-from-original').style.display   = mode==='from-original'?'block':'none';
-  document.getElementById('calc-from-discounted').style.display = mode==='from-discounted'?'block':'none';
-  document.querySelectorAll('.calc-tab').forEach(function(t){t.classList.remove('active');});
-  document.getElementById('ctab-'+mode).classList.add('active');
-}
-function calcA() {
-  var price = parseFloat(document.getElementById('orig-price').value)||0;
-  var pct   = parseFloat(document.getElementById('orig-pct').value)||0;
-  if (!price||pct<0||pct>100) { document.getElementById('res-a').classList.remove('show'); return; }
-  var disc = price*(1-pct/100), savings = price-disc;
-  var L = getLang();
-  document.getElementById('res-a').classList.add('show');
-  document.getElementById('res-a-val').textContent  = fmt(disc,2);
-  document.getElementById('res-a-save').textContent = L.savedTxt(fmt(savings,2),pct);
-}
-function calcB() {
-  var discP = parseFloat(document.getElementById('disc-price').value)||0;
-  var pctB  = parseFloat(document.getElementById('disc-pct').value)||0;
-  if (!discP||pctB<=0||pctB>=100) { document.getElementById('res-b').classList.remove('show'); return; }
-  var orig = discP/(1-pctB/100), savings = orig-discP;
-  var L = getLang();
-  document.getElementById('res-b').classList.add('show');
-  document.getElementById('res-b-val').textContent  = fmt(orig,2);
-  document.getElementById('res-b-save').textContent = L.discValTxt(fmt(savings,2),pctB);
-}
-
-// ── Claude API ────────────────────────────────────────
-async function askClaude(prompt, maxTok) {
-  maxTok = maxTok||1500;
-  var resp = await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok,
-      messages:[{role:'user',content:prompt}]})
-  });
-  var data = await resp.json();
-  var text = (data.content&&data.content[0]&&data.content[0].text)||'[]';
-  return text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-}
-
-// ── Static ticker data (shown immediately) ────────────
-var STATIC_STOCKS = [
-  {ids:['st-sp','st-sp2'],      p:5282,  c:-0.86},
-  {ids:['st-nq','st-nq2'],      p:16286, c:-0.72},
-  {ids:['st-dj','st-dj2'],      p:39594, c:-0.91},
-  {ids:['st-tasi','st-tasi2'],  p:11560, c:-0.76},
-  {ids:['st-ftse','st-ftse2'],  p:8220,  c:0.28},
-  {ids:['st-n225','st-n2252'],  p:33780, c:-2.80},
-  {ids:['st-dax','st-dax2'],    p:21300, c:-0.50},
-  {ids:['st-hsi','st-hsi2'],    p:22119, c:1.67},
-  {ids:['st-cac','st-cac2'],    p:7380,  c:-0.35},
-  {ids:['st-dfm','st-dfm2'],    p:4320,  c:0.22},
-  {ids:['st-kospi','st-kospi2'],p:2440,  c:0.18},
-  {ids:['st-asx','st-asx2'],    p:7820,  c:0.22},
-  {ids:['st-qse','st-qse2'],    p:10140, c:-0.11},
-  {ids:['st-sse','st-sse2'],    p:3272,  c:1.04},
-];
-var STATIC_CRYPTO = [
-  ['ct-btc','ct-btc2',  85200, 1.24],['ct-eth','ct-eth2', 1586,-0.82],
-  ['ct-sol','ct-sol2',  130,   2.10],['ct-xrp','ct-xrp2', 2.14,-0.38],
-  ['ct-doge','ct-doge2',0.162, 1.80],['ct-bnb','ct-bnb2', 592,  0.62],
-  ['ct-ada','ct-ada2',  0.641,-1.20],['ct-trx','ct-trx2', 0.241,0.90],
-  ['ct-avax','ct-avax2',19.8,  3.10],['ct-dot','ct-dot2', 3.92,-0.70],
-  ['ct-ltc','ct-ltc2',  78,    0.40],['ct-link','ct-link2',12.4, 1.60],
-];
-function applyStaticTickers() {
-  STATIC_STOCKS.forEach(function(s) {
-    setTick(s.ids[0],s.ids[1],fmt(s.p,0)+' ('+(s.c>=0?'+':'')+s.c.toFixed(2)+'%)',s.c>=0);
-  });
-  STATIC_CRYPTO.forEach(function(row) {
-    var p=row[2],c=row[3],ps=p>=1?'$'+fmt(p,2):'$'+fmt(p,4);
-    setTick(row[0],row[1],ps+' ('+(c>=0?'+':'')+c.toFixed(2)+'%)',c>=0);
-  });
-}
-
-// ── Live tickers ──────────────────────────────────────
-async function loadLiveTickers() {
-  // Crypto via CoinGecko (native CORS)
-  try {
-    var cgIds = 'bitcoin,ethereum,solana,ripple,dogecoin,binancecoin,cardano,tron,avalanche-2,polkadot,litecoin,chainlink';
-    var cgR = await fetch('https://api.coingecko.com/api/v3/simple/price?ids='+cgIds+'&vs_currencies=usd&include_24hr_change=true');
-    var cgD = await cgR.json();
-    var cgMap = {bitcoin:['ct-btc','ct-btc2'],ethereum:['ct-eth','ct-eth2'],solana:['ct-sol','ct-sol2'],
-      ripple:['ct-xrp','ct-xrp2'],dogecoin:['ct-doge','ct-doge2'],binancecoin:['ct-bnb','ct-bnb2'],
-      cardano:['ct-ada','ct-ada2'],tron:['ct-trx','ct-trx2'],'avalanche-2':['ct-avax','ct-avax2'],
-      polkadot:['ct-dot','ct-dot2'],litecoin:['ct-ltc','ct-ltc2'],chainlink:['ct-link','ct-link2']};
-    Object.entries(cgD).forEach(function(entry) {
-      var id=entry[0],v=entry[1];
-      var tickIds=cgMap[id]; if(!tickIds||!v) return;
-      var p=v.usd,c=v.usd_24h_change||0;
-      setTick(tickIds[0],tickIds[1],(p>=1?'$'+fmt(p,2):'$'+fmt(p,4))+' ('+(c>=0?'+':'')+c.toFixed(2)+'%)',c>=0);
-    });
-  } catch(e) {}
-
-  // Stocks via allorigins proxy
-  try {
-    var ySym = STATIC_STOCKS.filter(function(s){return s.ids[0].indexOf('tasi')<0&&s.ids[0].indexOf('dfm')<0&&s.ids[0].indexOf('qse')<0;})
-      .map(function(){return '';});
-    var ySyms = ['^GSPC','^IXIC','^DJI','^FTSE','^N225','^GDAXI','^HSI','^FCHI','^KS11','^AXJO'];
-    var yIdMap = {'^GSPC':['st-sp','st-sp2'],'^IXIC':['st-nq','st-nq2'],'^DJI':['st-dj','st-dj2'],
-      '^FTSE':['st-ftse','st-ftse2'],'^N225':['st-n225','st-n2252'],'^GDAXI':['st-dax','st-dax2'],
-      '^HSI':['st-hsi','st-hsi2'],'^FCHI':['st-cac','st-cac2'],'^KS11':['st-kospi','st-kospi2'],'^AXJO':['st-asx','st-asx2']};
-    var yTarget='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(ySyms.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
-    var yProx='https://api.allorigins.win/get?url='+encodeURIComponent(yTarget);
-    var yR = await fetch(yProx);
-    var yOuter = await yR.json();
-    var yD = JSON.parse(yOuter.contents);
-    ((yD&&yD.quoteResponse&&yD.quoteResponse.result)||[]).forEach(function(q) {
-      var tickIds2=yIdMap[q.symbol]; if(!tickIds2) return;
-      setTick(tickIds2[0],tickIds2[1],fmt(q.regularMarketPrice,0)+' ('+(q.regularMarketChangePercent>=0?'+':'')+q.regularMarketChangePercent.toFixed(2)+'%)',q.regularMarketChangePercent>=0);
-    });
-  } catch(e) {}
-}
-
-// ── News ──────────────────────────────────────────────
-async function loadEcoNews(btn) {
-  spinBtn(btn);
-  var container = document.getElementById('eco-news-container');
-  var L = getLang();
-  container.innerHTML = loadingHTML(L.loading);
-  var items = [];
-  // Try RSS via rss2json
-  var ecoFeeds = [
-    {url:'https://feeds.marketwatch.com/marketwatch/topstories/',name:'MarketWatch'},
-    {url:'https://www.cnbc.com/id/20910258/device/rss/rss.html',name:'CNBC'},
-    {url:'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml',name:'NYT Business'},
-    {url:'https://feeds.bloomberg.com/markets/news.rss',name:'Bloomberg'},
-  ];
-  var rssBase = 'https://api.rss2json.com/v1/api.json?rss_url=';
-  try {
-    var rssPromises = ecoFeeds.map(function(feed) {
-      return fetch(rssBase+encodeURIComponent(feed.url)+'&count=4')
-        .then(function(r){return r.json();})
-        .then(function(d){if(d.items&&d.items.length)items=items.concat(d.items.slice(0,4).map(function(i){return Object.assign({},i,{source:feed.name});}));})
-        .catch(function(){});
-    });
-    await Promise.allSettled(rssPromises);
-  } catch(e) {}
-  // If RSS got nothing, use Claude AI
-  if (items.length < 2) {
-    try {
-      var langName = {ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
-      var ecoPrompt = 'Generate 10 realistic financial/economic news for April 2025. Cover: US-China tariff war, Fed rates, oil prices ~$65, gold ~$3200, market volatility. Language: '+langName+'. Return ONLY a JSON array, no markdown:\n[{"title":"...","description":"150 word summary...","source":"Reuters|Bloomberg|CNBC|MarketWatch|Financial Times","link":"#","pubDate":"2025-04-15T10:00:00Z","_tag":"eco|mkt|fin|ana"}]';
-      var ecoText = await askClaude(ecoPrompt, 2500);
-      var parsed = JSON.parse(ecoText);
-      if (Array.isArray(parsed)) items = parsed;
-    } catch(e) {}
-  }
-  if (!items.length) items = getFallbackNews('economy');
-  items = items.slice(0,20).sort(function(a,b){return new Date(b.pubDate||0)-new Date(a.pubDate||0);});
-  renderNews(container, items);
-  stopBtn(btn);
-}
-
-async function loadTechNews(btn) {
-  spinBtn(btn);
-  var container = document.getElementById('tech-news-container');
-  var L = getLang();
-  container.innerHTML = loadingHTML(L.loading);
-  var items = [];
-  var techFeeds = [
-    {url:'https://techcrunch.com/feed/',name:'TechCrunch'},
-    {url:'https://www.theverge.com/rss/index.xml',name:'The Verge'},
-    {url:'https://feeds.arstechnica.com/arstechnica/index',name:'Ars Technica'},
-    {url:'https://www.wired.com/feed/rss',name:'Wired'},
-  ];
-  var rssBase2 = 'https://api.rss2json.com/v1/api.json?rss_url=';
-  try {
-    var techPromises = techFeeds.map(function(feed) {
-      return fetch(rssBase2+encodeURIComponent(feed.url)+'&count=4')
-        .then(function(r){return r.json();})
-        .then(function(d){if(d.items&&d.items.length)items=items.concat(d.items.slice(0,4).map(function(i){return Object.assign({},i,{source:feed.name});}));})
-        .catch(function(){});
-    });
-    await Promise.allSettled(techPromises);
-  } catch(e) {}
-  if (items.length < 2) {
-    try {
-      var langName2 = {ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
-      var techPrompt = 'Generate 10 realistic tech news articles for April 2025. Cover: AI models (Claude, GPT, Gemini), Nvidia chips, Apple, Google, Microsoft, Meta, cybersecurity. Language: '+langName2+'. Return ONLY a JSON array, no markdown:\n[{"title":"...","description":"150 word summary...","source":"TechCrunch|The Verge|Wired|Ars Technica","link":"#","pubDate":"2025-04-15T10:00:00Z","_tag":"tech|inn|dev"}]';
-      var techText = await askClaude(techPrompt, 2500);
-      var parsed2 = JSON.parse(techText);
-      if (Array.isArray(parsed2)) items = parsed2;
-    } catch(e) {}
-  }
-  if (!items.length) items = getFallbackNews('tech');
-  items = items.slice(0,20).sort(function(a,b){return new Date(b.pubDate||0)-new Date(a.pubDate||0);});
-  renderNews(container, items, 'tech');
-  stopBtn(btn);
-}
-
-// ── News render ────────────────────────────────────────
-var NEWS_COLORS = {Reuters:'#FF6B00',Bloomberg:'#6DC328',CNBC:'#e63946','Financial Times':'#1e88e5','The Economist':'#1565C0',MarketWatch:'#2196F3',TechCrunch:'#6DC328','The Verge':'#1e88e5',Wired:'#90b8d8','Ars Technica':'#f5c518','NYT Business':'#555',default:'#90b8d8'};
-var NEWS_TAG_KEYS = {Reuters:'mkt',Bloomberg:'eco',CNBC:'mkt','Financial Times':'fin','The Economist':'ana',MarketWatch:'mkt',TechCrunch:'tech','The Verge':'tech',Wired:'inn','Ars Technica':'dev','NYT Business':'eco',default:'news'};
-
-function renderNews(container, items, type) {
-  var L = getLang();
-  if (!items||!items.length) { container.innerHTML=errHTML(L.errLoad); return; }
-  var html = '<div class="news-grid">';
-  items.forEach(function(item) {
-    var src = item.source||'Unknown';
-    var ago = timeAgo(item.pubDate||item.date);
-    var short = (item.description||'').replace(/<[^>]+>/g,'').substring(0,130);
-    var full  = (item.description||'').replace(/<[^>]+>/g,'').substring(0,600);
-    var link  = item.link||'#';
-    var uid   = 'nc-'+Math.random().toString(36).substr(2,8);
-    var tagKey = item._tag||NEWS_TAG_KEYS[src]||NEWS_TAG_KEYS.default;
-    var tagTxt = (L.newsTag&&L.newsTag[tagKey])||tagKey;
-    var color  = NEWS_COLORS[src]||NEWS_COLORS.default;
-    html += '<div class="news-card" id="'+uid+'" onclick="toggleNewsCard(\''+uid+'\',\''+link.replace(/'/g,'%27')+'\')">';
-    html += '<div class="news-source" style="color:'+color+'">'+src+'</div>';
-    html += '<div class="news-title">'+(item.title||'—')+'</div>';
-    html += '<div class="news-desc news-short">'+short+'...</div>';
-    html += '<div class="news-full" style="display:none">';
-    html += '<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:10px 0">'+full+'</p>';
-    html += '<a href="'+link+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-i18n="readMore" style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:12px;font-family:var(--mono);text-decoration:none;margin-top:6px">'+L.readMore+'</a>';
-    html += '</div>';
-    html += '<div class="news-meta" style="margin-top:10px"><span>'+ago+'</span>';
-    html += '<span style="display:flex;align-items:center;gap:6px">';
-    html += '<span class="news-tag" data-tag="'+tagKey+'">'+tagTxt+'</span>';
-    html += '<span class="news-expand-icon" style="font-size:11px;color:var(--text3)">＋</span></span></div></div>';
-  });
-  html += '</div>';
-  container.innerHTML = html;
-}
-
-function toggleNewsCard(uid, link) {
-  var card = document.getElementById(uid); if(!card) return;
-  var isOpen = card.classList.contains('expanded');
-  document.querySelectorAll('.news-card.expanded').forEach(function(c) {
-    c.classList.remove('expanded');
-    c.querySelector('.news-short').style.display='block';
-    c.querySelector('.news-full').style.display='none';
-    var ic=c.querySelector('.news-expand-icon'); if(ic) ic.textContent='＋';
-  });
-  if (!isOpen) {
-    card.classList.add('expanded');
-    card.querySelector('.news-short').style.display='none';
-    card.querySelector('.news-full').style.display='block';
-    var ic2=card.querySelector('.news-expand-icon'); if(ic2) ic2.textContent='－';
-    card.scrollIntoView({behavior:'smooth',block:'nearest'});
-  }
-}
-
-// ── Metals ─────────────────────────────────────────────
-async function loadMetals(btn) {
-  spinBtn(btn);
-  var c = document.getElementById('metals-container');
-  var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  var metals = await fetchMetalPrices();
-  var MN = METAL_NAMES[currentLang]||METAL_NAMES.en;
-  var html2 = '<div class="grid-4">';
-  metals.forEach(function(m) {
-    var isLight = ['copper','nickel','zinc','aluminium'].indexOf(m.metalKey)>=0;
-    var unit = isLight?(L.lb||'USD/lb'):(L.oz||'USD/oz');
-    var name = MN[m.metalKey]||m.name;
-    var chg = m.change||0;
-    html2 += '<div class="price-card '+(chg>=0?'green':'red')+'">';
-    html2 += '<div class="card-label">'+m.symbol+'</div>';
-    html2 += '<div class="card-name" data-metal="'+m.metalKey+'">'+name+'</div>';
-    html2 += '<div class="card-price">$'+fmt(m.price,m.price>100?2:4)+'</div>';
-    html2 += '<div class="card-change '+(chg>=0?'up':'dn')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg).toFixed(2)+'%</div>';
-    html2 += '<div class="card-unit">'+unit+'</div></div>';
-  });
-  html2 += '</div>';
-  c.innerHTML = html2;
-  stopBtn(btn);
-}
-
-async function fetchMetalPrices() {
-  var fallbackMetals = [
-    {symbol:'XAU',metalKey:'gold',     name:'Gold',     price:3234, change:0.82},
-    {symbol:'XAG',metalKey:'silver',   name:'Silver',   price:32.5, change:1.14},
-    {symbol:'XPT',metalKey:'platinum', name:'Platinum', price:968,  change:-0.24},
-    {symbol:'XPD',metalKey:'palladium',name:'Palladium',price:940,  change:-0.89},
-    {symbol:'HG', metalKey:'copper',   name:'Copper',   price:4.65, change:0.56},
-    {symbol:'RHO',metalKey:'rhodium',  name:'Rhodium',  price:4550, change:0.0},
-    {symbol:'NI', metalKey:'nickel',   name:'Nickel',   price:7.12, change:0.31},
-    {symbol:'ZN', metalKey:'zinc',     name:'Zinc',     price:1.22, change:-0.17},
-  ];
-  try {
-    var mr = await fetch('https://api.metals.live/v1/spot');
-    var md = await mr.json();
-    if (Array.isArray(md)&&md.length) {
-      var mSymMap={gold:'XAU',silver:'XAG',platinum:'XPT',palladium:'XPD',copper:'HG',rhodium:'RHO',nickel:'NI',zinc:'ZN'};
-      var mResult = md.filter(function(m){return parseFloat(m.price)>0;}).slice(0,8).map(function(m) {
-        return {symbol:mSymMap[m.metal?.toLowerCase()]||m.metal?.substring(0,3).toUpperCase(),
-          metalKey:m.metal?.toLowerCase()||'',name:m.metal,
-          price:parseFloat(m.price),change:parseFloat(m.change||(Math.random()*2-1))};
-      });
-      if (mResult.length>=4) return mResult;
-    }
-  } catch(e) {}
-  return fallbackMetals;
-}
-
-// ── Stocks ─────────────────────────────────────────────
-var FB_STOCKS = {'^GSPC':{p:5282,c:-0.86},'^IXIC':{p:16286,c:-0.72},'^DJI':{p:39594,c:-0.91},'^RUT':{p:1880,c:-1.20},'^FTSE':{p:8220,c:0.28},'^N225':{p:33780,c:-2.80},'^HSI':{p:22119,c:1.67},'^GDAXI':{p:21300,c:-0.50},'^FCHI':{p:7380,c:-0.35},'^KS11':{p:2440,c:0.18},'^AXJO':{p:7820,c:0.22}};
-
-function renderPriceCard(m) {
-  return '<div class="price-card '+(m.change>=0?'green':'red')+'">'+
-    '<div class="card-label">'+m.symbol+'</div>'+
-    '<div class="card-name">'+m.name+'</div>'+
-    '<div class="card-price">'+fmt(m.price,0)+'</div>'+
-    '<div class="card-change '+(m.change>=0?'up':'dn')+'">'+(m.change>=0?'▲':'▼')+' '+Math.abs(m.change).toFixed(2)+'%</div>'+
-    '<div class="card-unit">'+(m.unit||'pts')+'</div></div>';
-}
-
-async function loadStocks(btn) {
-  spinBtn(btn);
-  var c = document.getElementById('stocks-container');
-  var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  var markets = await fetchStockIndices();
-  var sNames = STOCK_NAMES[currentLang]||STOCK_NAMES.en;
-  c.innerHTML =
-    '<div style="margin-bottom:20px"><h3 data-market-label="us" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sNames.us+'</h3><div class="grid-4">'+markets.us.map(renderPriceCard).join('')+'</div></div>'+
-    '<div style="margin-bottom:20px"><h3 data-market-label="global" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sNames.global+'</h3><div class="grid-4">'+markets.global.map(renderPriceCard).join('')+'</div></div>'+
-    '<div><h3 data-market-label="sa" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sNames.sa+'</h3><div class="grid-4">'+markets.sa.map(renderPriceCard).join('')+'</div></div>';
-  stopBtn(btn);
-}
-
-async function fetchStockIndices() {
-  var allSym = ['^GSPC','^IXIC','^DJI','^RUT','^FTSE','^N225','^HSI','^GDAXI','^FCHI','^KS11','^AXJO'];
-  var qmap2 = {};
-  try {
-    var stTarget='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(allSym.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
-    var stProxy='https://api.allorigins.win/get?url='+encodeURIComponent(stTarget);
-    var stR=await fetch(stProxy);
-    var stOuter=await stR.json();
-    var stD=JSON.parse(stOuter.contents);
-    ((stD&&stD.quoteResponse&&stD.quoteResponse.result)||[]).forEach(function(q){qmap2[q.symbol]=q;});
-  } catch(e) {}
-  function idx(sym,name,unit) {
-    unit=unit||'pts';
-    var q=qmap2[sym]||{}, fb=FB_STOCKS[sym]||{p:0,c:0};
-    return {symbol:sym,name:name,price:q.regularMarketPrice||fb.p,change:q.regularMarketChangePercent||fb.c,unit:unit};
-  }
-  return {
-    us:[idx('^GSPC','S&P 500'),idx('^IXIC','Nasdaq'),idx('^DJI','Dow Jones'),idx('^RUT','Russell 2000')],
-    global:[idx('^FTSE','FTSE 100'),idx('^N225','Nikkei 225'),idx('^HSI','Hang Seng'),idx('^GDAXI','DAX'),idx('^FCHI','CAC 40'),idx('^KS11','KOSPI'),idx('^AXJO','ASX 200')],
-    sa:[{symbol:'TASI',name:'تداول السعودي',price:11560,change:-0.76,unit:'نقطة'},
-        {symbol:'NOMU',name:'نمو',price:26800,change:-0.31,unit:'نقطة'},
-        {symbol:'2222',name:'أرامكو',price:26.30,change:-1.05,unit:'ريال'},
-        {symbol:'1120',name:'الراجحي',price:79.20,change:-0.73,unit:'ريال'}]
-  };
-}
-
-// ── Crypto ─────────────────────────────────────────────
-async function loadCrypto(btn) {
-  spinBtn(btn);
-  var c = document.getElementById('crypto-container');
-  var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  try {
-    var cgUrl='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=24&page=1&sparkline=false&price_change_percentage=24h';
-    var cgR2=await fetch(cgUrl);
-    var cgD2=await cgR2.json();
-    if (!cgD2||!cgD2.length) throw new Error('empty');
-    var html3='<div class="grid-4">';
-    cgD2.forEach(function(coin) {
-      var chgCoin=coin.price_change_percentage_24h||0;
-      var pCoin=coin.current_price;
-      html3+='<div class="price-card '+(chgCoin>=0?'green':'red')+'">';
-      html3+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><img src="'+coin.image+'" width="22" height="22" style="border-radius:50%" onerror="this.style.display=\'none\'"><div class="card-label" style="margin:0">'+(coin.symbol||'').toUpperCase()+'</div></div>';
-      html3+='<div class="card-name">'+coin.name+'</div>';
-      html3+='<div class="card-price">'+(pCoin>=1?'$'+fmt(pCoin,2):'$'+fmt(pCoin,5))+'</div>';
-      html3+='<div class="card-change '+(chgCoin>=0?'up':'dn')+'">'+(chgCoin>=0?'▲':'▼')+' '+Math.abs(chgCoin).toFixed(2)+'%</div>';
-      html3+='<div class="card-unit">MCap: $'+fmt(coin.market_cap)+'</div></div>';
-    });
-    html3+='</div>';
-    c.innerHTML=html3;
-  } catch(e) {
-    var html4='<div class="grid-4">';
-    STATIC_CRYPTO.forEach(function(row2) {
-      var pCoin2=row2[2],chgCoin2=row2[3];
-      html4+='<div class="price-card '+(chgCoin2>=0?'green':'red')+'"><div class="card-price">'+(pCoin2>=1?'$'+fmt(pCoin2,2):'$'+fmt(pCoin2,4))+'</div><div class="card-change '+(chgCoin2>=0?'up':'dn')+'">'+(chgCoin2>=0?'▲':'▼')+' '+Math.abs(chgCoin2).toFixed(2)+'%</div></div>';
-    });
-    html4+='</div>';
-    c.innerHTML=html4;
-  }
-  stopBtn(btn);
-}
-
-// ── Oil ────────────────────────────────────────────────
-var OIL_NAMES = {
-  ar:{wti:'خام غرب تكساس WTI',brent:'خام برنت Brent',natgas:'الغاز الطبيعي',heating:'زيت التدفئة',gasoline:'البنزين'},
-  en:{wti:'WTI Crude Oil',brent:'Brent Crude',natgas:'Natural Gas',heating:'Heating Oil',gasoline:'Gasoline'},
-  es:{wti:'Petróleo WTI',brent:'Petróleo Brent',natgas:'Gas Natural',heating:'Combustible',gasoline:'Gasolina'},
-  zh:{wti:'WTI原油',brent:'布伦特原油',natgas:'天然气',heating:'取暖油',gasoline:'汽油'},
-  fr:{wti:'Brut WTI',brent:'Brut Brent',natgas:'Gaz naturel',heating:'Fioul',gasoline:'Essence'},
-  de:{wti:'WTI-Rohöl',brent:'Brent-Rohöl',natgas:'Erdgas',heating:'Heizöl',gasoline:'Benzin'},
-  ja:{wti:'WTI原油',brent:'ブレント原油',natgas:'天然ガス',heating:'灯油',gasoline:'ガソリン'},
-  ko:{wti:'WTI 원유',brent:'브렌트 원유',natgas:'천연가스',heating:'난방유',gasoline:'가솔린'},
-  pt:{wti:'Petróleo WTI',brent:'Petróleo Brent',natgas:'Gás Natural',heating:'Óleo',gasoline:'Gasolina'},
-  ru:{wti:'Нефть WTI',brent:'Нефть Brent',natgas:'Природный газ',heating:'Мазут',gasoline:'Бензин'},
-  tr:{wti:'WTI Ham Petrol',brent:'Brent Ham Petrol',natgas:'Doğalgaz',heating:'Isıtma Yağı',gasoline:'Benzin'},
-  hi:{wti:'WTI कच्चा तेल',brent:'ब्रेंट कच्चा तेल',natgas:'प्राकृतिक गैस',heating:'हीटिंग ऑयल',gasoline:'गैसोलीन'},
-};
-async function loadOil(btn) {
-  spinBtn(btn);
-  var c = document.getElementById('oil-container');
-  var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  var ON = OIL_NAMES[currentLang]||OIL_NAMES.en;
-  var oilPrices = await fetchOilPrices();
-  var html5='<div class="grid-4">';
-  oilPrices.forEach(function(o) {
-    html5+='<div class="price-card '+(o.change>=0?'green':'red')+'">';
-    html5+='<div class="card-label">'+o.symbol+'</div>';
-    html5+='<div class="card-name" data-oil-key="'+o.nameKey+'">'+( ON[o.nameKey]||o.nameKey)+'</div>';
-    html5+='<div class="card-price">$'+fmt(o.price,2)+'</div>';
-    html5+='<div class="card-change '+(o.change>=0?'up':'dn')+'">'+(o.change>=0?'▲':'▼')+' '+Math.abs(o.change).toFixed(2)+'%</div>';
-    html5+='<div class="card-unit">'+(L.oilUnit||'USD/barrel')+'</div></div>';
-  });
-  html5+='</div>';
-  c.innerHTML=html5;
-  stopBtn(btn);
-}
-async function fetchOilPrices() {
-  var oilSyms=['CL=F','BZ=F','NG=F','HO=F','RB=F'];
-  var oilDefs=[
-    {nameKey:'wti',symbol:'WTI',fb:{price:62.5,change:-1.8}},
-    {nameKey:'brent',symbol:'Brent',fb:{price:65.8,change:-1.6}},
-    {nameKey:'natgas',symbol:'NG',fb:{price:3.42,change:0.9}},
-    {nameKey:'heating',symbol:'HO',fb:{price:2.21,change:-0.4}},
-    {nameKey:'gasoline',symbol:'RB',fb:{price:2.18,change:-0.6}},
-  ];
-  var oilMap={};
-  try {
-    var oilT='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(oilSyms.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
-    var oilP='https://api.allorigins.win/get?url='+encodeURIComponent(oilT);
-    var oilR=await fetch(oilP);
-    var oilO=await oilR.json();
-    var oilD=JSON.parse(oilO.contents);
-    ((oilD&&oilD.quoteResponse&&oilD.quoteResponse.result)||[]).forEach(function(q){oilMap[q.symbol]={price:q.regularMarketPrice,change:q.regularMarketChangePercent};});
-  } catch(e) {}
-  return oilDefs.map(function(o,i){var q=oilMap[oilSyms[i]]||o.fb;return {nameKey:o.nameKey,symbol:o.symbol,price:q.price,change:q.change};});
-}
-
-// ── Forex ──────────────────────────────────────────────
-var fxRates = {};
-var CURR_LIST = {USD:'US Dollar',EUR:'Euro',GBP:'British Pound',JPY:'Japanese Yen',SAR:'Saudi Riyal',AED:'UAE Dirham',KWD:'Kuwaiti Dinar',QAR:'Qatari Riyal',BHD:'Bahraini Dinar',OMR:'Omani Rial',EGP:'Egyptian Pound',TRY:'Turkish Lira',CHF:'Swiss Franc',CAD:'Canadian Dollar',AUD:'Australian Dollar',CNY:'Chinese Yuan',INR:'Indian Rupee',BRL:'Brazilian Real',SGD:'Singapore Dollar',ZAR:'South African Rand',MYR:'Malaysian Ringgit',KRW:'South Korean Won'};
-var FX_CHG = {EUR:0.08,GBP:0.14,JPY:-0.22,SAR:0.00,AED:0.01,KWD:0.03,QAR:0.00,BHD:0.00,OMR:0.00,CHF:0.31,CAD:-0.18,AUD:0.42,CNY:-0.11,TRY:-1.24,EGP:-0.08,INR:0.06,BRL:-0.34,SGD:0.19,ZAR:-0.56,MYR:0.27};
-var DEFAULT_FX = {USD:1,EUR:0.92,GBP:0.79,JPY:143.5,SAR:3.75,AED:3.67,KWD:0.31,QAR:3.64,BHD:0.376,OMR:0.385,EGP:49.8,TRY:36.8,CHF:0.89,CAD:1.39,AUD:1.57,CNY:7.27,INR:84.6,BRL:5.82,SGD:1.34,ZAR:18.8,MYR:4.47,KRW:1380};
-
-async function loadForex(btn) {
-  spinBtn(btn);
-  var c = document.getElementById('forex-container');
-  var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  try {
-    var fxR=await fetch('https://open.er-api.com/v6/latest/USD');
-    var fxD=await fxR.json();
-    fxRates = fxD.rates||DEFAULT_FX;
-  } catch(e) { fxRates = DEFAULT_FX; }
-  populateSelects();
-  var CN = CURRENCY_NAMES[currentLang]||CURR_LIST;
-  var fxPairs = ['EUR','GBP','JPY','SAR','AED','KWD','QAR','BHD','OMR','CHF','CAD','AUD','CNY','TRY','EGP','INR','BRL','SGD','ZAR','MYR'];
-  var html6='<div class="grid-4">';
-  fxPairs.forEach(function(code) {
-    var rate=fxRates[code]||1;
-    var chgFx=FX_CHG[code]||0;
-    html6+='<div class="price-card '+(chgFx>=0?'green':'red')+'">';
-    html6+='<div class="card-label">USD/'+code+'</div>';
-    html6+='<div class="card-name" data-curr-code="'+code+'">'+(CN[code]||code)+'</div>';
-    html6+='<div class="card-price">'+fmt(rate,4)+'</div>';
-    html6+='<div class="card-change '+(chgFx>=0?'up':'dn')+'">'+(chgFx>=0?'▲':'▼')+' '+Math.abs(chgFx).toFixed(2)+'%</div>';
-    html6+='<div class="card-unit">1 USD = '+fmt(rate,4)+' '+code+'</div></div>';
-  });
-  html6+='</div>';
-  c.innerHTML=html6;
-  stopBtn(btn);
-}
-function populateSelects() {
-  var fromEl=document.getElementById('fx-from');
-  var toEl=document.getElementById('fx-to');
-  if (!fromEl||!toEl) return;
-  var CN2=CURRENCY_NAMES[currentLang]||CURR_LIST;
-  var opts=Object.keys(CURR_LIST).map(function(code){return '<option value="'+code+'">'+code+' – '+(CN2[code]||code)+'</option>';}).join('');
-  fromEl.innerHTML=opts; toEl.innerHTML=opts;
-  fromEl.value='USD'; toEl.value='SAR';
-}
-function convertCurrency() {
-  var amount=parseFloat(document.getElementById('fx-amount').value)||0;
-  var fromCurr=document.getElementById('fx-from').value;
-  var toCurr=document.getElementById('fx-to').value;
-  var rates = Object.keys(fxRates).length>1?fxRates:DEFAULT_FX;
-  var result=amount*(rates[toCurr]/rates[fromCurr]);
-  document.getElementById('fx-result').classList.add('show');
-  document.getElementById('fx-result-val').textContent=fmt(result,4)+' '+toCurr;
-  document.getElementById('fx-result-sub').textContent=amount+' '+fromCurr+' = '+fmt(result,4)+' '+toCurr;
-}
-
-// ── Deals ──────────────────────────────────────────────
-async function loadDeals(btn) {
-  spinBtn(btn);
-  var c = document.getElementById('deals-container');
-  var L = getLang();
-  c.innerHTML = loadingHTML(L.loading);
-  var dealItems = [];
-  try {
-    var langNameD={ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
-    var dealPrompt='Generate 9 major financial deals and M&A transactions from Q1-Q2 2025. Include tech, finance, crypto, Middle East investments. Language: '+langNameD+'. Return ONLY JSON array:\n[{"title":"...","value":"$XB","desc":"...","type":"tech|finance|crypto|stocks","date":"Q1 2025"}]';
-    var dealText=await askClaude(dealPrompt,1500);
-    var dealParsed=JSON.parse(dealText);
-    if (Array.isArray(dealParsed)) dealItems=dealParsed;
-  } catch(e) {}
-  if (!dealItems.length) {
-    dealItems=[
-      {type:'tech',title:'Microsoft + Activision',value:'$68.7B',desc:'Largest gaming acquisition in history.',date:'2024'},
-      {type:'finance',title:'Capital One + Discover',value:'$35.3B',desc:'Building a rival to Visa/Mastercard.',date:'2024'},
-      {type:'crypto',title:'Ripple + Standard Custody',value:'$250M',desc:'Institutional crypto custody expansion.',date:'2024'},
-      {type:'stocks',title:'Saudi Aramco offering',value:'$11.2B',desc:'Secondary listing on Tadawul exchange.',date:'2024'},
-      {type:'tech',title:'Google + Wiz',value:'$23B',desc:'Largest cybersecurity acquisition ever.',date:'2024'},
-      {type:'finance',title:'JPMorgan + First Republic',value:'$10.6B',desc:'FDIC-assisted bank rescue acquisition.',date:'2024'},
-    ];
-  }
-  var html7='<div class="grid-3">';
-  dealItems.forEach(function(d) {
-    html7+='<div class="deal-card"><div class="deal-type '+d.type+'" data-deal-type="'+d.type+'">'+(L.dealTypes&&L.dealTypes[d.type]||d.type)+'</div>';
-    html7+='<div class="deal-title">'+d.title+'</div><div class="deal-value">'+d.value+'</div>';
-    html7+='<div class="deal-desc">'+d.desc+'</div><div class="deal-date">'+d.date+'</div></div>';
-  });
-  html7+='</div>';
-  c.innerHTML=html7;
-  stopBtn(btn);
-}
-
-// ── Fallback news ─────────────────────────────────────
-function getFallbackNews(type) {
-  var now=new Date().toISOString();
-  if (type==='tech') return [
-    {title:'Anthropic Claude 4 Tops AI Benchmarks',source:'TechCrunch',pubDate:now,description:'Anthropic released Claude Sonnet 4 this week, which outperformed GPT-4o and Gemini Ultra on coding, mathematics, and reasoning tests. The model shows particular strength in multi-step reasoning tasks and long-context understanding, making it a top choice for enterprise AI deployments.',link:'#',_tag:'tech'},
-    {title:'Nvidia Blackwell GPUs Face 6-Month Wait Times',source:'The Verge',pubDate:now,description:"Demand for Nvidia's Blackwell B200 GPUs far exceeds production capacity, with cloud providers reporting 6-month-plus waitlists. The shortage is driving up cloud AI computing costs and forcing companies to explore alternatives from AMD and Intel.",link:'#',_tag:'tech'},
-    {title:'Apple Intelligence Expands to 12 New Languages',source:'Ars Technica',pubDate:now,description:'Apple rolled out its AI suite to 12 new regions including Saudi Arabia, France, Germany, and Japan. The expansion includes Siri upgrades, smart writing tools, and image generation capabilities, as Apple plays catch-up with Google and Microsoft.',link:'#',_tag:'inn'},
-    {title:'Meta Releases Llama 4 Open-Source AI',source:'Wired',pubDate:now,description:'Meta launched Llama 4, its most capable open-source AI model, claiming competitive performance with GPT-4. The freely available model is accelerating AI adoption globally, with thousands of developers already building on the release.',link:'#',_tag:'inn'},
-    {title:'US-China Chip War Escalates with New Export Bans',source:'Ars Technica',pubDate:now,description:'Washington expanded export controls blocking advanced AI chip sales to China, affecting Nvidia and AMD. TSMC confirmed halting shipments of 7nm chips to Chinese entities, disrupting supply chains and accelerating China investment in domestic chip production.',link:'#',_tag:'dev'},
-    {title:'Cybersecurity Spending to Hit $300B in 2025',source:'TechCrunch',pubDate:now,description:'Gartner forecasts global cybersecurity spending will exceed $300 billion in 2025, driven by AI-powered threats and ransomware attacks. Companies are investing heavily in zero-trust security architectures and AI-based threat detection systems.',link:'#',_tag:'dev'},
-  ];
-  return [
-    {title:'US Stocks Tumble on Tariff War Fears',source:'MarketWatch',pubDate:now,description:"Wall Street posted its worst weekly performance of 2025 as investors digest the economic impact of escalating US-China trade tensions. The S&P 500 shed 3.1%, with tech and consumer sectors leading losses. Analysts warn further declines are possible if trade talks stall.",link:'#',_tag:'mkt'},
-    {title:'Federal Reserve Holds Rates Amid Uncertainty',source:'CNBC',pubDate:now,description:"The Federal Reserve kept its benchmark rate at 4.25-4.50%, with Chair Powell citing 'heightened uncertainty' from trade policy. Futures markets now price in only one rate cut for 2025, down from three expected at the start of the year.",link:'#',_tag:'eco'},
-    {title:'Gold Surges Past $3,200 All-Time High',source:'Bloomberg',pubDate:now,description:'Gold hit a record above $3,200 per ounce as investors sought safe-haven assets amid global market turmoil. Central bank purchases, ETF inflows, and recession fears are fueling the historic rally in the precious metal.',link:'#',_tag:'eco'},
-    {title:'Oil Falls Below $65 on Recession Concerns',source:'Reuters',pubDate:now,description:'Brent crude dropped below $65 a barrel as traders price in higher recession risk from US tariffs. OPEC+ is reportedly considering an emergency meeting to discuss production adjustments in response to demand concerns.',link:'#',_tag:'mkt'},
-    {title:"Saudi Vision 2030 Attracts $50B in Foreign Investment",source:'Financial Times',pubDate:now,description:"Saudi Arabia's PIF announced $50 billion in new foreign direct investment at the Future Investment Initiative. Key projects include NEOM city construction, Red Sea tourism development, and advanced manufacturing facilities targeting post-oil economic diversification.",link:'#',_tag:'eco'},
-    {title:'IMF Cuts Global Growth Forecast to 2.8%',source:'The Economist',pubDate:now,description:'The IMF lowered its 2025 global growth forecast to 2.8%, citing trade fragmentation and tariff uncertainty. Emerging market economies face particular headwinds as dollar strength increases debt servicing costs for dollar-denominated obligations.',link:'#',_tag:'ana'},
-    {title:'Euro Hits 3-Year High Against Dollar',source:'MarketWatch',pubDate:now,description:"The euro surged to $1.13, its strongest since 2022, as markets bet Europe will weather the trade war better than the US. The dollar index fell to a two-year low, reflecting diminished confidence in US economic policy stability.",link:'#',_tag:'mkt'},
-    {title:'China Retaliates with 125% Tariffs on US Goods',source:'CNBC',pubDate:now,description:"Beijing announced 125% retaliatory tariffs on US agricultural products and energy, escalating the trade conflict. Economists warn the measures could shave 0.5% from global GDP growth if sustained, with both economies facing significant disruption.",link:'#',_tag:'eco'},
-  ];
-}
-
-// ── Init ──────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', function() {
-  applyStaticTickers();
-  loadEcoNews(null);
-  populateSelects();
-  loadLiveTickers();
-  setInterval(loadLiveTickers, 90000);
-});
-
-
-// ── i18n data ─────────────────────────────────────────
-const LANGS = {
+var LANGS = {
   ar: {
     dir:'rtl', name:'العربية',
     live:'مباشر',
@@ -1732,7 +1105,7 @@ const LANGS = {
 };
 
 
-const METAL_NAMES = {
+var METAL_NAMES = {
   ar:{ gold:'الذهب',silver:'الفضة',platinum:'البلاتين',palladium:'البلاديوم',copper:'النحاس',rhodium:'الروديوم',iridium:'الإيريديوم',osmium:'الأوزميوم',nickel:'النيكل',zinc:'الزنك' },
   en:{ gold:'Gold',silver:'Silver',platinum:'Platinum',palladium:'Palladium',copper:'Copper',rhodium:'Rhodium',iridium:'Iridium',osmium:'Osmium',nickel:'Nickel',zinc:'Zinc' },
   es:{ gold:'Oro',silver:'Plata',platinum:'Platino',palladium:'Paladio',copper:'Cobre',rhodium:'Rodio',iridium:'Iridio',osmium:'Osmio',nickel:'Níquel',zinc:'Zinc' },
@@ -1747,7 +1120,8 @@ const METAL_NAMES = {
   hi:{ gold:'सोना',silver:'चांदी',platinum:'प्लेटिनम',palladium:'पैलेडियम',copper:'तांबा',rhodium:'रोडियम',iridium:'इरिडियम',osmium:'ऑस्मियम',nickel:'निकल',zinc:'जस्ता' },
 };
 
-const STOCK_NAMES = {
+
+var STOCK_NAMES = {
   ar:{ us:'🇺🇸 الأسواق الأمريكية', global:'🌍 الأسواق العالمية', sa:'🇸🇦 سوق تداول السعودي' },
   en:{ us:'🇺🇸 US Markets', global:'🌍 Global Markets', sa:'🇸🇦 Saudi Tadawul' },
   es:{ us:'🇺🇸 Mercados EE.UU.', global:'🌍 Mercados Globales', sa:'🇸🇦 Bolsa Saudí' },
@@ -1762,7 +1136,8 @@ const STOCK_NAMES = {
   hi:{ us:'🇺🇸 अमेरिकी बाज़ार', global:'🌍 वैश्विक बाज़ार', sa:'🇸🇦 सऊदी बाज़ार' },
 };
 
-const CURRENCY_NAMES = {
+
+var CURRENCY_NAMES = {
   ar:{ USD:'دولار أمريكي',EUR:'يورو',GBP:'جنيه إسترليني',JPY:'ين ياباني',SAR:'ريال سعودي',AED:'درهم إماراتي',KWD:'دينار كويتي',QAR:'ريال قطري',BHD:'دينار بحريني',OMR:'ريال عماني',EGP:'جنيه مصري',TRY:'ليرة تركية',CHF:'فرنك سويسري',CAD:'دولار كندي',AUD:'دولار أسترالي',CNY:'يوان صيني',INR:'روبية هندية',BRL:'ريال برازيلي',SGD:'دولار سنغافوري',ZAR:'راند جنوب أفريقي',MYR:'رينغيت ماليزي',KRW:'وون كوري' },
   en:{ USD:'US Dollar',EUR:'Euro',GBP:'Brit. Pound',JPY:'Japanese Yen',SAR:'Saudi Riyal',AED:'UAE Dirham',KWD:'Kuwaiti Dinar',QAR:'Qatari Riyal',BHD:'Bahraini Dinar',OMR:'Omani Rial',EGP:'Egyptian Pound',TRY:'Turkish Lira',CHF:'Swiss Franc',CAD:'Canadian Dollar',AUD:'Australian Dollar',CNY:'Chinese Yuan',INR:'Indian Rupee',BRL:'Brazilian Real',SGD:'Singapore Dollar',ZAR:'S. African Rand',MYR:'Malaysian Ringgit',KRW:'South Korean Won' },
   es:{ USD:'Dólar EE.UU.',EUR:'Euro',GBP:'Libra Esterlina',JPY:'Yen Japonés',SAR:'Riyal Saudí',AED:'Dírham EAU',KWD:'Dinar Kuwaití',QAR:'Riyal Qatarí',BHD:'Dinar Bareiní',OMR:'Rial Omaní',EGP:'Libra Egipcia',TRY:'Lira Turca',CHF:'Franco Suizo',CAD:'Dólar Canadiense',AUD:'Dólar Australiano',CNY:'Yuan Chino',INR:'Rupia India',BRL:'Real Brasileño',SGD:'Dólar de Singapur',ZAR:'Rand Sudafricano',MYR:'Ringgit Malayo',KRW:'Won Surcoreano' },
@@ -1770,9 +1145,634 @@ const CURRENCY_NAMES = {
 };
 
 
-
-// ── Language init ─────────────────────────────────────
 var currentLang = localStorage.getItem('trendi-lang') || 'ar';
+
+// Currency list for forex
+var CURR_LIST = {USD:'US Dollar',EUR:'Euro',GBP:'British Pound',JPY:'Japanese Yen',SAR:'Saudi Riyal',AED:'UAE Dirham',KWD:'Kuwaiti Dinar',QAR:'Qatari Riyal',BHD:'Bahraini Dinar',OMR:'Omani Rial',EGP:'Egyptian Pound',TRY:'Turkish Lira',CHF:'Swiss Franc',CAD:'Canadian Dollar',AUD:'Australian Dollar',CNY:'Chinese Yuan',INR:'Indian Rupee',BRL:'Brazilian Real',SGD:'Singapore Dollar',ZAR:'South African Rand',MYR:'Malaysian Ringgit',KRW:'South Korean Won'};
+var DEFAULT_FX = {USD:1,EUR:0.92,GBP:0.79,JPY:143.5,SAR:3.75,AED:3.67,KWD:0.31,QAR:3.64,BHD:0.376,OMR:0.385,EGP:49.8,TRY:36.8,CHF:0.89,CAD:1.39,AUD:1.57,CNY:7.27,INR:84.6,BRL:5.82,SGD:1.34,ZAR:18.8,MYR:4.47,KRW:1380};
+var fxRates = {};
+var FX_CHG = {EUR:0.08,GBP:0.14,JPY:-0.22,SAR:0.00,AED:0.01,KWD:0.03,QAR:0.00,BHD:0.00,OMR:0.00,CHF:0.31,CAD:-0.18,AUD:0.42,CNY:-0.11,TRY:-1.24,EGP:-0.08,INR:0.06,BRL:-0.34,SGD:0.19,ZAR:-0.56,MYR:0.27};
+
+// Static ticker data — shown immediately on load
+var STATIC_STOCKS = [
+  {ids:['st-sp','st-sp2'],      p:5282,  c:-0.86},
+  {ids:['st-nq','st-nq2'],      p:16286, c:-0.72},
+  {ids:['st-dj','st-dj2'],      p:39594, c:-0.91},
+  {ids:['st-tasi','st-tasi2'],  p:11560, c:-0.76},
+  {ids:['st-ftse','st-ftse2'],  p:8220,  c:0.28},
+  {ids:['st-n225','st-n2252'],  p:33780, c:-2.80},
+  {ids:['st-dax','st-dax2'],    p:21300, c:-0.50},
+  {ids:['st-hsi','st-hsi2'],    p:22119, c:1.67},
+  {ids:['st-cac','st-cac2'],    p:7380,  c:-0.35},
+  {ids:['st-dfm','st-dfm2'],    p:4320,  c:0.22},
+  {ids:['st-kospi','st-kospi2'],p:2440,  c:0.18},
+  {ids:['st-asx','st-asx2'],    p:7820,  c:0.22},
+  {ids:['st-qse','st-qse2'],    p:10140, c:-0.11},
+  {ids:['st-sse','st-sse2'],    p:3272,  c:1.04},
+];
+var STATIC_CRYPTO = [
+  ['ct-btc','ct-btc2',  85200, 1.24], ['ct-eth','ct-eth2',  1586,-0.82],
+  ['ct-sol','ct-sol2',  130,   2.10], ['ct-xrp','ct-xrp2',  2.14,-0.38],
+  ['ct-doge','ct-doge2',0.162, 1.80], ['ct-bnb','ct-bnb2',  592,  0.62],
+  ['ct-ada','ct-ada2',  0.641,-1.20], ['ct-trx','ct-trx2',  0.241,0.90],
+  ['ct-avax','ct-avax2',19.8,  3.10], ['ct-dot','ct-dot2',  3.92,-0.70],
+  ['ct-ltc','ct-ltc2',  78,    0.40], ['ct-link','ct-link2',12.4, 1.60],
+];
+
+var FB_STOCKS = {'^GSPC':{p:5282,c:-0.86},'^IXIC':{p:16286,c:-0.72},'^DJI':{p:39594,c:-0.91},'^RUT':{p:1880,c:-1.20},'^FTSE':{p:8220,c:0.28},'^N225':{p:33780,c:-2.80},'^HSI':{p:22119,c:1.67},'^GDAXI':{p:21300,c:-0.50},'^FCHI':{p:7380,c:-0.35},'^KS11':{p:2440,c:0.18},'^AXJO':{p:7820,c:0.22}};
+var NEWS_COLORS = {Reuters:'#FF6B00',Bloomberg:'#6DC328',CNBC:'#e63946','Financial Times':'#1e88e5','The Economist':'#1565C0',MarketWatch:'#2196F3',TechCrunch:'#6DC328','The Verge':'#1e88e5',Wired:'#90b8d8','Ars Technica':'#f5c518','NYT Business':'#555',default:'#90b8d8'};
+var NEWS_TAGS = {Reuters:'mkt',Bloomberg:'eco',CNBC:'mkt','Financial Times':'fin','The Economist':'ana',MarketWatch:'mkt',TechCrunch:'tech','The Verge':'tech',Wired:'inn','Ars Technica':'dev','NYT Business':'eco',default:'news'};
+var OIL_NAMES = {ar:{wti:'خام WTI',brent:'برنت Brent',natgas:'الغاز الطبيعي',heating:'زيت التدفئة',gasoline:'البنزين'},en:{wti:'WTI Crude',brent:'Brent Crude',natgas:'Natural Gas',heating:'Heating Oil',gasoline:'Gasoline'},es:{wti:'Petróleo WTI',brent:'Petróleo Brent',natgas:'Gas Natural',heating:'Combustible',gasoline:'Gasolina'},zh:{wti:'WTI原油',brent:'布伦特原油',natgas:'天然气',heating:'取暖油',gasoline:'汽油'},fr:{wti:'Brut WTI',brent:'Brut Brent',natgas:'Gaz naturel',heating:'Fioul',gasoline:'Essence'},de:{wti:'WTI-Rohöl',brent:'Brent-Rohöl',natgas:'Erdgas',heating:'Heizöl',gasoline:'Benzin'},ja:{wti:'WTI原油',brent:'ブレント原油',natgas:'天然ガス',heating:'灯油',gasoline:'ガソリン'},ko:{wti:'WTI 원유',brent:'브렌트 원유',natgas:'천연가스',heating:'난방유',gasoline:'가솔린'},pt:{wti:'Petróleo WTI',brent:'Petróleo Brent',natgas:'Gás Natural',heating:'Óleo',gasoline:'Gasolina'},ru:{wti:'Нефть WTI',brent:'Нефть Brent',natgas:'Природный газ',heating:'Мазут',gasoline:'Бензин'},tr:{wti:'WTI Ham Petrol',brent:'Brent Ham Petrol',natgas:'Doğalgaz',heating:'Isıtma Yağı',gasoline:'Benzin'},hi:{wti:'WTI कच्चा तेल',brent:'ब्रेंट कच्चा तेल',natgas:'प्राकृतिक गैस',heating:'हीटिंग ऑयल',gasoline:'गैसोलीन'}};
+var loadedTabs = {};
+
+// ═══════════════════════════════════════════════════════════
+//  STEP 2 — FUNCTIONS (use data from step 1)
+// ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+//  TRENDI.CC — Clean JS (no duplicate declarations)
+// ═══════════════════════════════════════════════════════
+
+// ── Helpers ──────────────────────────────────────────
+function fmt(n, dec) {
+  dec = dec === undefined ? 2 : dec;
+  if (n === null || n === undefined || isNaN(n)) return '--';
+  var num = parseFloat(n);
+  if (num >= 1e12) return (num/1e12).toFixed(2)+'T';
+  if (num >= 1e9)  return (num/1e9).toFixed(2)+'B';
+  if (num >= 1e6)  return (num/1e6).toFixed(2)+'M';
+  return num.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+function timeAgo(ds) {
+  if (!ds) return '--';
+  var diff = Math.floor((Date.now()-new Date(ds))/1000);
+  if (diff < 60)    return 'Now';
+  if (diff < 3600)  return Math.floor(diff/60)+'m ago';
+  if (diff < 86400) return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+function spinBtn(b) { if(b) b.classList.add('spinning'); }
+function stopBtn(b)  { if(b) b.classList.remove('spinning'); }
+function setTick(id1, id2, text, isUp) {
+  [id1,id2].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = isUp===true?'up':isUp===false?'dn':'';
+  });
+}
+function loadingHTML(msg) {
+  return '<div class="loading-state"><div class="spinner"></div><div class="loading-text">'+msg+'</div></div>';
+}
+function errHTML(msg) {
+  return '<div class="error-state">'+msg+'</div>';
+}
+function getLang() { return LANGS[currentLang]||LANGS.ar; }
+
+// ── Theme ─────────────────────────────────────────────
+function toggleTheme() {
+  document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent = document.body.classList.contains('light')? '🌙':'☀️';
+  localStorage.setItem('trendi-theme', document.body.classList.contains('light')?'light':'dark');
+}
+if (localStorage.getItem('trendi-theme')==='light') document.body.classList.add('light');
+
+// ── Tabs ──────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('pane-'+id).classList.add('active');
+  document.getElementById('btn-'+id).classList.add('active');
+  if (!loadedTabs[id]) { loadTab(id); loadedTabs[id]=true; }
+}
+function loadTab(id) {
+  var map = {metals:loadMetals,stocks:loadStocks,crypto:loadCrypto,
+    oil:loadOil,forex:loadForex,'news-tech':loadTechNews,deals:loadDeals};
+  if (map[id]) map[id](null);
+}
+function switchCalc(mode) {
+  document.getElementById('calc-from-original').style.display   = mode==='from-original'?'block':'none';
+  document.getElementById('calc-from-discounted').style.display = mode==='from-discounted'?'block':'none';
+  document.querySelectorAll('.calc-tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('ctab-'+mode).classList.add('active');
+}
+function calcA() {
+  var price = parseFloat(document.getElementById('orig-price').value)||0;
+  var pct   = parseFloat(document.getElementById('orig-pct').value)||0;
+  if (!price||pct<0||pct>100) { document.getElementById('res-a').classList.remove('show'); return; }
+  var disc = price*(1-pct/100), savings = price-disc;
+  var L = getLang();
+  document.getElementById('res-a').classList.add('show');
+  document.getElementById('res-a-val').textContent  = fmt(disc,2);
+  document.getElementById('res-a-save').textContent = L.savedTxt(fmt(savings,2),pct);
+}
+function calcB() {
+  var discP = parseFloat(document.getElementById('disc-price').value)||0;
+  var pctB  = parseFloat(document.getElementById('disc-pct').value)||0;
+  if (!discP||pctB<=0||pctB>=100) { document.getElementById('res-b').classList.remove('show'); return; }
+  var orig = discP/(1-pctB/100), savings = orig-discP;
+  var L = getLang();
+  document.getElementById('res-b').classList.add('show');
+  document.getElementById('res-b-val').textContent  = fmt(orig,2);
+  document.getElementById('res-b-save').textContent = L.discValTxt(fmt(savings,2),pctB);
+}
+
+// ── Claude API ────────────────────────────────────────
+async function askClaude(prompt, maxTok) {
+  maxTok = maxTok||1500;
+  var resp = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok,
+      messages:[{role:'user',content:prompt}]})
+  });
+  var data = await resp.json();
+  var text = (data.content&&data.content[0]&&data.content[0].text)||'[]';
+  return text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+}
+
+// ── Static ticker data (shown immediately) ────────────
+function applyStaticTickers() {
+  STATIC_STOCKS.forEach(function(s) {
+    setTick(s.ids[0],s.ids[1],fmt(s.p,0)+' ('+(s.c>=0?'+':'')+s.c.toFixed(2)+'%)',s.c>=0);
+  });
+  STATIC_CRYPTO.forEach(function(row) {
+    var p=row[2],c=row[3],ps=p>=1?'$'+fmt(p,2):'$'+fmt(p,4);
+    setTick(row[0],row[1],ps+' ('+(c>=0?'+':'')+c.toFixed(2)+'%)',c>=0);
+  });
+}
+
+// ── Live tickers ──────────────────────────────────────
+async function loadLiveTickers() {
+  // Crypto via CoinGecko (native CORS)
+  try {
+    var cgIds = 'bitcoin,ethereum,solana,ripple,dogecoin,binancecoin,cardano,tron,avalanche-2,polkadot,litecoin,chainlink';
+    var cgR = await fetch('https://api.coingecko.com/api/v3/simple/price?ids='+cgIds+'&vs_currencies=usd&include_24hr_change=true');
+    var cgD = await cgR.json();
+    var cgMap = {bitcoin:['ct-btc','ct-btc2'],ethereum:['ct-eth','ct-eth2'],solana:['ct-sol','ct-sol2'],
+      ripple:['ct-xrp','ct-xrp2'],dogecoin:['ct-doge','ct-doge2'],binancecoin:['ct-bnb','ct-bnb2'],
+      cardano:['ct-ada','ct-ada2'],tron:['ct-trx','ct-trx2'],'avalanche-2':['ct-avax','ct-avax2'],
+      polkadot:['ct-dot','ct-dot2'],litecoin:['ct-ltc','ct-ltc2'],chainlink:['ct-link','ct-link2']};
+    Object.entries(cgD).forEach(function(entry) {
+      var id=entry[0],v=entry[1];
+      var tickIds=cgMap[id]; if(!tickIds||!v) return;
+      var p=v.usd,c=v.usd_24h_change||0;
+      setTick(tickIds[0],tickIds[1],(p>=1?'$'+fmt(p,2):'$'+fmt(p,4))+' ('+(c>=0?'+':'')+c.toFixed(2)+'%)',c>=0);
+    });
+  } catch(e) {}
+
+  // Stocks via allorigins proxy
+  try {
+    var ySym = STATIC_STOCKS.filter(function(s){return s.ids[0].indexOf('tasi')<0&&s.ids[0].indexOf('dfm')<0&&s.ids[0].indexOf('qse')<0;})
+      .map(function(){return '';});
+    var ySyms = ['^GSPC','^IXIC','^DJI','^FTSE','^N225','^GDAXI','^HSI','^FCHI','^KS11','^AXJO'];
+    var yIdMap = {'^GSPC':['st-sp','st-sp2'],'^IXIC':['st-nq','st-nq2'],'^DJI':['st-dj','st-dj2'],
+      '^FTSE':['st-ftse','st-ftse2'],'^N225':['st-n225','st-n2252'],'^GDAXI':['st-dax','st-dax2'],
+      '^HSI':['st-hsi','st-hsi2'],'^FCHI':['st-cac','st-cac2'],'^KS11':['st-kospi','st-kospi2'],'^AXJO':['st-asx','st-asx2']};
+    var yTarget='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(ySyms.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
+    var yProx='https://api.allorigins.win/get?url='+encodeURIComponent(yTarget);
+    var yR = await fetch(yProx);
+    var yOuter = await yR.json();
+    var yD = JSON.parse(yOuter.contents);
+    ((yD&&yD.quoteResponse&&yD.quoteResponse.result)||[]).forEach(function(q) {
+      var tickIds2=yIdMap[q.symbol]; if(!tickIds2) return;
+      setTick(tickIds2[0],tickIds2[1],fmt(q.regularMarketPrice,0)+' ('+(q.regularMarketChangePercent>=0?'+':'')+q.regularMarketChangePercent.toFixed(2)+'%)',q.regularMarketChangePercent>=0);
+    });
+  } catch(e) {}
+}
+
+// ── News ──────────────────────────────────────────────
+async function loadEcoNews(btn) {
+  spinBtn(btn);
+  var container = document.getElementById('eco-news-container');
+  var L = getLang();
+  container.innerHTML = loadingHTML(L.loading);
+  var items = [];
+  // Try RSS via rss2json
+  var ecoFeeds = [
+    {url:'https://feeds.marketwatch.com/marketwatch/topstories/',name:'MarketWatch'},
+    {url:'https://www.cnbc.com/id/20910258/device/rss/rss.html',name:'CNBC'},
+    {url:'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml',name:'NYT Business'},
+    {url:'https://feeds.bloomberg.com/markets/news.rss',name:'Bloomberg'},
+  ];
+  var rssBase = 'https://api.rss2json.com/v1/api.json?rss_url=';
+  try {
+    var rssPromises = ecoFeeds.map(function(feed) {
+      return fetch(rssBase+encodeURIComponent(feed.url)+'&count=4')
+        .then(function(r){return r.json();})
+        .then(function(d){if(d.items&&d.items.length)items=items.concat(d.items.slice(0,4).map(function(i){return Object.assign({},i,{source:feed.name});}));})
+        .catch(function(){});
+    });
+    await Promise.allSettled(rssPromises);
+  } catch(e) {}
+  // If RSS got nothing, use Claude AI
+  if (items.length < 2) {
+    try {
+      var langName = {ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
+      var ecoPrompt = 'Generate 10 realistic financial/economic news for April 2025. Cover: US-China tariff war, Fed rates, oil prices ~$65, gold ~$3200, market volatility. Language: '+langName+'. Return ONLY a JSON array, no markdown:\n[{"title":"...","description":"150 word summary...","source":"Reuters|Bloomberg|CNBC|MarketWatch|Financial Times","link":"#","pubDate":"2025-04-15T10:00:00Z","_tag":"eco|mkt|fin|ana"}]';
+      var ecoText = await askClaude(ecoPrompt, 2500);
+      var parsed = JSON.parse(ecoText);
+      if (Array.isArray(parsed)) items = parsed;
+    } catch(e) {}
+  }
+  if (!items.length) items = getFallbackNews('economy');
+  items = items.slice(0,20).sort(function(a,b){return new Date(b.pubDate||0)-new Date(a.pubDate||0);});
+  renderNews(container, items);
+  stopBtn(btn);
+}
+
+async function loadTechNews(btn) {
+  spinBtn(btn);
+  var container = document.getElementById('tech-news-container');
+  var L = getLang();
+  container.innerHTML = loadingHTML(L.loading);
+  var items = [];
+  var techFeeds = [
+    {url:'https://techcrunch.com/feed/',name:'TechCrunch'},
+    {url:'https://www.theverge.com/rss/index.xml',name:'The Verge'},
+    {url:'https://feeds.arstechnica.com/arstechnica/index',name:'Ars Technica'},
+    {url:'https://www.wired.com/feed/rss',name:'Wired'},
+  ];
+  var rssBase2 = 'https://api.rss2json.com/v1/api.json?rss_url=';
+  try {
+    var techPromises = techFeeds.map(function(feed) {
+      return fetch(rssBase2+encodeURIComponent(feed.url)+'&count=4')
+        .then(function(r){return r.json();})
+        .then(function(d){if(d.items&&d.items.length)items=items.concat(d.items.slice(0,4).map(function(i){return Object.assign({},i,{source:feed.name});}));})
+        .catch(function(){});
+    });
+    await Promise.allSettled(techPromises);
+  } catch(e) {}
+  if (items.length < 2) {
+    try {
+      var langName2 = {ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
+      var techPrompt = 'Generate 10 realistic tech news articles for April 2025. Cover: AI models (Claude, GPT, Gemini), Nvidia chips, Apple, Google, Microsoft, Meta, cybersecurity. Language: '+langName2+'. Return ONLY a JSON array, no markdown:\n[{"title":"...","description":"150 word summary...","source":"TechCrunch|The Verge|Wired|Ars Technica","link":"#","pubDate":"2025-04-15T10:00:00Z","_tag":"tech|inn|dev"}]';
+      var techText = await askClaude(techPrompt, 2500);
+      var parsed2 = JSON.parse(techText);
+      if (Array.isArray(parsed2)) items = parsed2;
+    } catch(e) {}
+  }
+  if (!items.length) items = getFallbackNews('tech');
+  items = items.slice(0,20).sort(function(a,b){return new Date(b.pubDate||0)-new Date(a.pubDate||0);});
+  renderNews(container, items, 'tech');
+  stopBtn(btn);
+}
+
+// ── News render ────────────────────────────────────────
+var NEWS_TAG_KEYS = {Reuters:'mkt',Bloomberg:'eco',CNBC:'mkt','Financial Times':'fin','The Economist':'ana',MarketWatch:'mkt',TechCrunch:'tech','The Verge':'tech',Wired:'inn','Ars Technica':'dev','NYT Business':'eco',default:'news'};
+
+function renderNews(container, items, type) {
+  var L = getLang();
+  if (!items||!items.length) { container.innerHTML=errHTML(L.errLoad); return; }
+  var html = '<div class="news-grid">';
+  items.forEach(function(item) {
+    var src = item.source||'Unknown';
+    var ago = timeAgo(item.pubDate||item.date);
+    var short = (item.description||'').replace(/<[^>]+>/g,'').substring(0,130);
+    var full  = (item.description||'').replace(/<[^>]+>/g,'').substring(0,600);
+    var link  = item.link||'#';
+    var uid   = 'nc-'+Math.random().toString(36).substr(2,8);
+    var tagKey = item._tag||NEWS_TAG_KEYS[src]||NEWS_TAG_KEYS.default;
+    var tagTxt = (L.newsTag&&L.newsTag[tagKey])||tagKey;
+    var color  = NEWS_COLORS[src]||NEWS_COLORS.default;
+    html += '<div class="news-card" id="'+uid+'" onclick="toggleNewsCard(\''+uid+'\',\''+link.replace(/'/g,'%27')+'\')">';
+    html += '<div class="news-source" style="color:'+color+'">'+src+'</div>';
+    html += '<div class="news-title">'+(item.title||'—')+'</div>';
+    html += '<div class="news-desc news-short">'+short+'...</div>';
+    html += '<div class="news-full" style="display:none">';
+    html += '<p style="font-size:13px;color:var(--text2);line-height:1.7;margin:10px 0">'+full+'</p>';
+    html += '<a href="'+link+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-i18n="readMore" style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:12px;font-family:var(--mono);text-decoration:none;margin-top:6px">'+L.readMore+'</a>';
+    html += '</div>';
+    html += '<div class="news-meta" style="margin-top:10px"><span>'+ago+'</span>';
+    html += '<span style="display:flex;align-items:center;gap:6px">';
+    html += '<span class="news-tag" data-tag="'+tagKey+'">'+tagTxt+'</span>';
+    html += '<span class="news-expand-icon" style="font-size:11px;color:var(--text3)">＋</span></span></div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function toggleNewsCard(uid, link) {
+  var card = document.getElementById(uid); if(!card) return;
+  var isOpen = card.classList.contains('expanded');
+  document.querySelectorAll('.news-card.expanded').forEach(function(c) {
+    c.classList.remove('expanded');
+    c.querySelector('.news-short').style.display='block';
+    c.querySelector('.news-full').style.display='none';
+    var ic=c.querySelector('.news-expand-icon'); if(ic) ic.textContent='＋';
+  });
+  if (!isOpen) {
+    card.classList.add('expanded');
+    card.querySelector('.news-short').style.display='none';
+    card.querySelector('.news-full').style.display='block';
+    var ic2=card.querySelector('.news-expand-icon'); if(ic2) ic2.textContent='－';
+    card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+}
+
+// ── Metals ─────────────────────────────────────────────
+async function loadMetals(btn) {
+  spinBtn(btn);
+  var c = document.getElementById('metals-container');
+  var L = getLang();
+  c.innerHTML = loadingHTML(L.loading);
+  var metals = await fetchMetalPrices();
+  var MN = METAL_NAMES[currentLang]||METAL_NAMES.en;
+  var html2 = '<div class="grid-4">';
+  metals.forEach(function(m) {
+    var isLight = ['copper','nickel','zinc','aluminium'].indexOf(m.metalKey)>=0;
+    var unit = isLight?(L.lb||'USD/lb'):(L.oz||'USD/oz');
+    var name = MN[m.metalKey]||m.name;
+    var chg = m.change||0;
+    html2 += '<div class="price-card '+(chg>=0?'green':'red')+'">';
+    html2 += '<div class="card-label">'+m.symbol+'</div>';
+    html2 += '<div class="card-name" data-metal="'+m.metalKey+'">'+name+'</div>';
+    html2 += '<div class="card-price">$'+fmt(m.price,m.price>100?2:4)+'</div>';
+    html2 += '<div class="card-change '+(chg>=0?'up':'dn')+'">'+(chg>=0?'▲':'▼')+' '+Math.abs(chg).toFixed(2)+'%</div>';
+    html2 += '<div class="card-unit">'+unit+'</div></div>';
+  });
+  html2 += '</div>';
+  c.innerHTML = html2;
+  stopBtn(btn);
+}
+
+async function fetchMetalPrices() {
+  var fallbackMetals = [
+    {symbol:'XAU',metalKey:'gold',     name:'Gold',     price:3234, change:0.82},
+    {symbol:'XAG',metalKey:'silver',   name:'Silver',   price:32.5, change:1.14},
+    {symbol:'XPT',metalKey:'platinum', name:'Platinum', price:968,  change:-0.24},
+    {symbol:'XPD',metalKey:'palladium',name:'Palladium',price:940,  change:-0.89},
+    {symbol:'HG', metalKey:'copper',   name:'Copper',   price:4.65, change:0.56},
+    {symbol:'RHO',metalKey:'rhodium',  name:'Rhodium',  price:4550, change:0.0},
+    {symbol:'NI', metalKey:'nickel',   name:'Nickel',   price:7.12, change:0.31},
+    {symbol:'ZN', metalKey:'zinc',     name:'Zinc',     price:1.22, change:-0.17},
+  ];
+  try {
+    var mr = await fetch('https://api.metals.live/v1/spot');
+    var md = await mr.json();
+    if (Array.isArray(md)&&md.length) {
+      var mSymMap={gold:'XAU',silver:'XAG',platinum:'XPT',palladium:'XPD',copper:'HG',rhodium:'RHO',nickel:'NI',zinc:'ZN'};
+      var mResult = md.filter(function(m){return parseFloat(m.price)>0;}).slice(0,8).map(function(m) {
+        return {symbol:mSymMap[m.metal?.toLowerCase()]||m.metal?.substring(0,3).toUpperCase(),
+          metalKey:m.metal?.toLowerCase()||'',name:m.metal,
+          price:parseFloat(m.price),change:parseFloat(m.change||(Math.random()*2-1))};
+      });
+      if (mResult.length>=4) return mResult;
+    }
+  } catch(e) {}
+  return fallbackMetals;
+}
+
+// ── Stocks ─────────────────────────────────────────────
+
+function renderPriceCard(m) {
+  return '<div class="price-card '+(m.change>=0?'green':'red')+'">'+
+    '<div class="card-label">'+m.symbol+'</div>'+
+    '<div class="card-name">'+m.name+'</div>'+
+    '<div class="card-price">'+fmt(m.price,0)+'</div>'+
+    '<div class="card-change '+(m.change>=0?'up':'dn')+'">'+(m.change>=0?'▲':'▼')+' '+Math.abs(m.change).toFixed(2)+'%</div>'+
+    '<div class="card-unit">'+(m.unit||'pts')+'</div></div>';
+}
+
+async function loadStocks(btn) {
+  spinBtn(btn);
+  var c = document.getElementById('stocks-container');
+  var L = getLang();
+  c.innerHTML = loadingHTML(L.loading);
+  var markets = await fetchStockIndices();
+  var sNames = STOCK_NAMES[currentLang]||STOCK_NAMES.en;
+  c.innerHTML =
+    '<div style="margin-bottom:20px"><h3 data-market-label="us" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sNames.us+'</h3><div class="grid-4">'+markets.us.map(renderPriceCard).join('')+'</div></div>'+
+    '<div style="margin-bottom:20px"><h3 data-market-label="global" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sNames.global+'</h3><div class="grid-4">'+markets.global.map(renderPriceCard).join('')+'</div></div>'+
+    '<div><h3 data-market-label="sa" style="font-size:13px;color:var(--text3);margin-bottom:12px">'+sNames.sa+'</h3><div class="grid-4">'+markets.sa.map(renderPriceCard).join('')+'</div></div>';
+  stopBtn(btn);
+}
+
+async function fetchStockIndices() {
+  var allSym = ['^GSPC','^IXIC','^DJI','^RUT','^FTSE','^N225','^HSI','^GDAXI','^FCHI','^KS11','^AXJO'];
+  var qmap2 = {};
+  try {
+    var stTarget='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(allSym.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
+    var stProxy='https://api.allorigins.win/get?url='+encodeURIComponent(stTarget);
+    var stR=await fetch(stProxy);
+    var stOuter=await stR.json();
+    var stD=JSON.parse(stOuter.contents);
+    ((stD&&stD.quoteResponse&&stD.quoteResponse.result)||[]).forEach(function(q){qmap2[q.symbol]=q;});
+  } catch(e) {}
+  function idx(sym,name,unit) {
+    unit=unit||'pts';
+    var q=qmap2[sym]||{}, fb=FB_STOCKS[sym]||{p:0,c:0};
+    return {symbol:sym,name:name,price:q.regularMarketPrice||fb.p,change:q.regularMarketChangePercent||fb.c,unit:unit};
+  }
+  return {
+    us:[idx('^GSPC','S&P 500'),idx('^IXIC','Nasdaq'),idx('^DJI','Dow Jones'),idx('^RUT','Russell 2000')],
+    global:[idx('^FTSE','FTSE 100'),idx('^N225','Nikkei 225'),idx('^HSI','Hang Seng'),idx('^GDAXI','DAX'),idx('^FCHI','CAC 40'),idx('^KS11','KOSPI'),idx('^AXJO','ASX 200')],
+    sa:[{symbol:'TASI',name:'تداول السعودي',price:11560,change:-0.76,unit:'نقطة'},
+        {symbol:'NOMU',name:'نمو',price:26800,change:-0.31,unit:'نقطة'},
+        {symbol:'2222',name:'أرامكو',price:26.30,change:-1.05,unit:'ريال'},
+        {symbol:'1120',name:'الراجحي',price:79.20,change:-0.73,unit:'ريال'}]
+  };
+}
+
+// ── Crypto ─────────────────────────────────────────────
+async function loadCrypto(btn) {
+  spinBtn(btn);
+  var c = document.getElementById('crypto-container');
+  var L = getLang();
+  c.innerHTML = loadingHTML(L.loading);
+  try {
+    var cgUrl='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=24&page=1&sparkline=false&price_change_percentage=24h';
+    var cgR2=await fetch(cgUrl);
+    var cgD2=await cgR2.json();
+    if (!cgD2||!cgD2.length) throw new Error('empty');
+    var html3='<div class="grid-4">';
+    cgD2.forEach(function(coin) {
+      var chgCoin=coin.price_change_percentage_24h||0;
+      var pCoin=coin.current_price;
+      html3+='<div class="price-card '+(chgCoin>=0?'green':'red')+'">';
+      html3+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><img src="'+coin.image+'" width="22" height="22" style="border-radius:50%" onerror="this.style.display=\'none\'"><div class="card-label" style="margin:0">'+(coin.symbol||'').toUpperCase()+'</div></div>';
+      html3+='<div class="card-name">'+coin.name+'</div>';
+      html3+='<div class="card-price">'+(pCoin>=1?'$'+fmt(pCoin,2):'$'+fmt(pCoin,5))+'</div>';
+      html3+='<div class="card-change '+(chgCoin>=0?'up':'dn')+'">'+(chgCoin>=0?'▲':'▼')+' '+Math.abs(chgCoin).toFixed(2)+'%</div>';
+      html3+='<div class="card-unit">MCap: $'+fmt(coin.market_cap)+'</div></div>';
+    });
+    html3+='</div>';
+    c.innerHTML=html3;
+  } catch(e) {
+    var html4='<div class="grid-4">';
+    STATIC_CRYPTO.forEach(function(row2) {
+      var pCoin2=row2[2],chgCoin2=row2[3];
+      html4+='<div class="price-card '+(chgCoin2>=0?'green':'red')+'"><div class="card-price">'+(pCoin2>=1?'$'+fmt(pCoin2,2):'$'+fmt(pCoin2,4))+'</div><div class="card-change '+(chgCoin2>=0?'up':'dn')+'">'+(chgCoin2>=0?'▲':'▼')+' '+Math.abs(chgCoin2).toFixed(2)+'%</div></div>';
+    });
+    html4+='</div>';
+    c.innerHTML=html4;
+  }
+  stopBtn(btn);
+}
+
+// ── Oil ────────────────────────────────────────────────
+async function loadOil(btn) {
+  spinBtn(btn);
+  var c = document.getElementById('oil-container');
+  var L = getLang();
+  c.innerHTML = loadingHTML(L.loading);
+  var ON = OIL_NAMES[currentLang]||OIL_NAMES.en;
+  var oilPrices = await fetchOilPrices();
+  var html5='<div class="grid-4">';
+  oilPrices.forEach(function(o) {
+    html5+='<div class="price-card '+(o.change>=0?'green':'red')+'">';
+    html5+='<div class="card-label">'+o.symbol+'</div>';
+    html5+='<div class="card-name" data-oil-key="'+o.nameKey+'">'+( ON[o.nameKey]||o.nameKey)+'</div>';
+    html5+='<div class="card-price">$'+fmt(o.price,2)+'</div>';
+    html5+='<div class="card-change '+(o.change>=0?'up':'dn')+'">'+(o.change>=0?'▲':'▼')+' '+Math.abs(o.change).toFixed(2)+'%</div>';
+    html5+='<div class="card-unit">'+(L.oilUnit||'USD/barrel')+'</div></div>';
+  });
+  html5+='</div>';
+  c.innerHTML=html5;
+  stopBtn(btn);
+}
+async function fetchOilPrices() {
+  var oilSyms=['CL=F','BZ=F','NG=F','HO=F','RB=F'];
+  var oilDefs=[
+    {nameKey:'wti',symbol:'WTI',fb:{price:62.5,change:-1.8}},
+    {nameKey:'brent',symbol:'Brent',fb:{price:65.8,change:-1.6}},
+    {nameKey:'natgas',symbol:'NG',fb:{price:3.42,change:0.9}},
+    {nameKey:'heating',symbol:'HO',fb:{price:2.21,change:-0.4}},
+    {nameKey:'gasoline',symbol:'RB',fb:{price:2.18,change:-0.6}},
+  ];
+  var oilMap={};
+  try {
+    var oilT='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(oilSyms.join(','))+'&fields=regularMarketPrice,regularMarketChangePercent';
+    var oilP='https://api.allorigins.win/get?url='+encodeURIComponent(oilT);
+    var oilR=await fetch(oilP);
+    var oilO=await oilR.json();
+    var oilD=JSON.parse(oilO.contents);
+    ((oilD&&oilD.quoteResponse&&oilD.quoteResponse.result)||[]).forEach(function(q){oilMap[q.symbol]={price:q.regularMarketPrice,change:q.regularMarketChangePercent};});
+  } catch(e) {}
+  return oilDefs.map(function(o,i){var q=oilMap[oilSyms[i]]||o.fb;return {nameKey:o.nameKey,symbol:o.symbol,price:q.price,change:q.change};});
+}
+
+// ── Forex ──────────────────────────────────────────────
+
+async function loadForex(btn) {
+  spinBtn(btn);
+  var c = document.getElementById('forex-container');
+  var L = getLang();
+  c.innerHTML = loadingHTML(L.loading);
+  try {
+    var fxR=await fetch('https://open.er-api.com/v6/latest/USD');
+    var fxD=await fxR.json();
+    fxRates = fxD.rates||DEFAULT_FX;
+  } catch(e) { fxRates = DEFAULT_FX; }
+  populateSelects();
+  var CN = CURRENCY_NAMES[currentLang]||CURR_LIST;
+  var fxPairs = ['EUR','GBP','JPY','SAR','AED','KWD','QAR','BHD','OMR','CHF','CAD','AUD','CNY','TRY','EGP','INR','BRL','SGD','ZAR','MYR'];
+  var html6='<div class="grid-4">';
+  fxPairs.forEach(function(code) {
+    var rate=fxRates[code]||1;
+    var chgFx=FX_CHG[code]||0;
+    html6+='<div class="price-card '+(chgFx>=0?'green':'red')+'">';
+    html6+='<div class="card-label">USD/'+code+'</div>';
+    html6+='<div class="card-name" data-curr-code="'+code+'">'+(CN[code]||code)+'</div>';
+    html6+='<div class="card-price">'+fmt(rate,4)+'</div>';
+    html6+='<div class="card-change '+(chgFx>=0?'up':'dn')+'">'+(chgFx>=0?'▲':'▼')+' '+Math.abs(chgFx).toFixed(2)+'%</div>';
+    html6+='<div class="card-unit">1 USD = '+fmt(rate,4)+' '+code+'</div></div>';
+  });
+  html6+='</div>';
+  c.innerHTML=html6;
+  stopBtn(btn);
+}
+function populateSelects() {
+  var fromEl=document.getElementById('fx-from');
+  var toEl=document.getElementById('fx-to');
+  if (!fromEl||!toEl) return;
+  var CN2=CURRENCY_NAMES[currentLang]||CURR_LIST;
+  var opts=Object.keys(CURR_LIST).map(function(code){return '<option value="'+code+'">'+code+' – '+(CN2[code]||code)+'</option>';}).join('');
+  fromEl.innerHTML=opts; toEl.innerHTML=opts;
+  fromEl.value='USD'; toEl.value='SAR';
+}
+function convertCurrency() {
+  var amount=parseFloat(document.getElementById('fx-amount').value)||0;
+  var fromCurr=document.getElementById('fx-from').value;
+  var toCurr=document.getElementById('fx-to').value;
+  var rates = Object.keys(fxRates).length>1?fxRates:DEFAULT_FX;
+  var result=amount*(rates[toCurr]/rates[fromCurr]);
+  document.getElementById('fx-result').classList.add('show');
+  document.getElementById('fx-result-val').textContent=fmt(result,4)+' '+toCurr;
+  document.getElementById('fx-result-sub').textContent=amount+' '+fromCurr+' = '+fmt(result,4)+' '+toCurr;
+}
+
+// ── Deals ──────────────────────────────────────────────
+async function loadDeals(btn) {
+  spinBtn(btn);
+  var c = document.getElementById('deals-container');
+  var L = getLang();
+  c.innerHTML = loadingHTML(L.loading);
+  var dealItems = [];
+  try {
+    var langNameD={ar:'Arabic',en:'English',fr:'French',de:'German',zh:'Chinese',es:'Spanish',ja:'Japanese',ko:'Korean',ru:'Russian',tr:'Turkish',hi:'Hindi',pt:'Portuguese'}[currentLang]||'English';
+    var dealPrompt='Generate 9 major financial deals and M&A transactions from Q1-Q2 2025. Include tech, finance, crypto, Middle East investments. Language: '+langNameD+'. Return ONLY JSON array:\n[{"title":"...","value":"$XB","desc":"...","type":"tech|finance|crypto|stocks","date":"Q1 2025"}]';
+    var dealText=await askClaude(dealPrompt,1500);
+    var dealParsed=JSON.parse(dealText);
+    if (Array.isArray(dealParsed)) dealItems=dealParsed;
+  } catch(e) {}
+  if (!dealItems.length) {
+    dealItems=[
+      {type:'tech',title:'Microsoft + Activision',value:'$68.7B',desc:'Largest gaming acquisition in history.',date:'2024'},
+      {type:'finance',title:'Capital One + Discover',value:'$35.3B',desc:'Building a rival to Visa/Mastercard.',date:'2024'},
+      {type:'crypto',title:'Ripple + Standard Custody',value:'$250M',desc:'Institutional crypto custody expansion.',date:'2024'},
+      {type:'stocks',title:'Saudi Aramco offering',value:'$11.2B',desc:'Secondary listing on Tadawul exchange.',date:'2024'},
+      {type:'tech',title:'Google + Wiz',value:'$23B',desc:'Largest cybersecurity acquisition ever.',date:'2024'},
+      {type:'finance',title:'JPMorgan + First Republic',value:'$10.6B',desc:'FDIC-assisted bank rescue acquisition.',date:'2024'},
+    ];
+  }
+  var html7='<div class="grid-3">';
+  dealItems.forEach(function(d) {
+    html7+='<div class="deal-card"><div class="deal-type '+d.type+'" data-deal-type="'+d.type+'">'+(L.dealTypes&&L.dealTypes[d.type]||d.type)+'</div>';
+    html7+='<div class="deal-title">'+d.title+'</div><div class="deal-value">'+d.value+'</div>';
+    html7+='<div class="deal-desc">'+d.desc+'</div><div class="deal-date">'+d.date+'</div></div>';
+  });
+  html7+='</div>';
+  c.innerHTML=html7;
+  stopBtn(btn);
+}
+
+// ── Fallback news ─────────────────────────────────────
+function getFallbackNews(type) {
+  var now=new Date().toISOString();
+  if (type==='tech') return [
+    {title:'Anthropic Claude 4 Tops AI Benchmarks',source:'TechCrunch',pubDate:now,description:'Anthropic released Claude Sonnet 4 this week, which outperformed GPT-4o and Gemini Ultra on coding, mathematics, and reasoning tests. The model shows particular strength in multi-step reasoning tasks and long-context understanding, making it a top choice for enterprise AI deployments.',link:'#',_tag:'tech'},
+    {title:'Nvidia Blackwell GPUs Face 6-Month Wait Times',source:'The Verge',pubDate:now,description:"Demand for Nvidia's Blackwell B200 GPUs far exceeds production capacity, with cloud providers reporting 6-month-plus waitlists. The shortage is driving up cloud AI computing costs and forcing companies to explore alternatives from AMD and Intel.",link:'#',_tag:'tech'},
+    {title:'Apple Intelligence Expands to 12 New Languages',source:'Ars Technica',pubDate:now,description:'Apple rolled out its AI suite to 12 new regions including Saudi Arabia, France, Germany, and Japan. The expansion includes Siri upgrades, smart writing tools, and image generation capabilities, as Apple plays catch-up with Google and Microsoft.',link:'#',_tag:'inn'},
+    {title:'Meta Releases Llama 4 Open-Source AI',source:'Wired',pubDate:now,description:'Meta launched Llama 4, its most capable open-source AI model, claiming competitive performance with GPT-4. The freely available model is accelerating AI adoption globally, with thousands of developers already building on the release.',link:'#',_tag:'inn'},
+    {title:'US-China Chip War Escalates with New Export Bans',source:'Ars Technica',pubDate:now,description:'Washington expanded export controls blocking advanced AI chip sales to China, affecting Nvidia and AMD. TSMC confirmed halting shipments of 7nm chips to Chinese entities, disrupting supply chains and accelerating China investment in domestic chip production.',link:'#',_tag:'dev'},
+    {title:'Cybersecurity Spending to Hit $300B in 2025',source:'TechCrunch',pubDate:now,description:'Gartner forecasts global cybersecurity spending will exceed $300 billion in 2025, driven by AI-powered threats and ransomware attacks. Companies are investing heavily in zero-trust security architectures and AI-based threat detection systems.',link:'#',_tag:'dev'},
+  ];
+  return [
+    {title:'US Stocks Tumble on Tariff War Fears',source:'MarketWatch',pubDate:now,description:"Wall Street posted its worst weekly performance of 2025 as investors digest the economic impact of escalating US-China trade tensions. The S&P 500 shed 3.1%, with tech and consumer sectors leading losses. Analysts warn further declines are possible if trade talks stall.",link:'#',_tag:'mkt'},
+    {title:'Federal Reserve Holds Rates Amid Uncertainty',source:'CNBC',pubDate:now,description:"The Federal Reserve kept its benchmark rate at 4.25-4.50%, with Chair Powell citing 'heightened uncertainty' from trade policy. Futures markets now price in only one rate cut for 2025, down from three expected at the start of the year.",link:'#',_tag:'eco'},
+    {title:'Gold Surges Past $3,200 All-Time High',source:'Bloomberg',pubDate:now,description:'Gold hit a record above $3,200 per ounce as investors sought safe-haven assets amid global market turmoil. Central bank purchases, ETF inflows, and recession fears are fueling the historic rally in the precious metal.',link:'#',_tag:'eco'},
+    {title:'Oil Falls Below $65 on Recession Concerns',source:'Reuters',pubDate:now,description:'Brent crude dropped below $65 a barrel as traders price in higher recession risk from US tariffs. OPEC+ is reportedly considering an emergency meeting to discuss production adjustments in response to demand concerns.',link:'#',_tag:'mkt'},
+    {title:"Saudi Vision 2030 Attracts $50B in Foreign Investment",source:'Financial Times',pubDate:now,description:"Saudi Arabia's PIF announced $50 billion in new foreign direct investment at the Future Investment Initiative. Key projects include NEOM city construction, Red Sea tourism development, and advanced manufacturing facilities targeting post-oil economic diversification.",link:'#',_tag:'eco'},
+    {title:'IMF Cuts Global Growth Forecast to 2.8%',source:'The Economist',pubDate:now,description:'The IMF lowered its 2025 global growth forecast to 2.8%, citing trade fragmentation and tariff uncertainty. Emerging market economies face particular headwinds as dollar strength increases debt servicing costs for dollar-denominated obligations.',link:'#',_tag:'ana'},
+    {title:'Euro Hits 3-Year High Against Dollar',source:'MarketWatch',pubDate:now,description:"The euro surged to $1.13, its strongest since 2022, as markets bet Europe will weather the trade war better than the US. The dollar index fell to a two-year low, reflecting diminished confidence in US economic policy stability.",link:'#',_tag:'mkt'},
+    {title:'China Retaliates with 125% Tariffs on US Goods',source:'CNBC',pubDate:now,description:"Beijing announced 125% retaliatory tariffs on US agricultural products and energy, escalating the trade conflict. Economists warn the measures could shave 0.5% from global GDP growth if sustained, with both economies facing significant disruption.",link:'#',_tag:'eco'},
+  ];
+}
+
+// ── Init ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  applyStaticTickers();
+  loadEcoNews(null);
+  populateSelects();
+  loadLiveTickers();
+  setInterval(loadLiveTickers, 90000);
+});
+
+
+// ═══════════════════════════════════════════════════════════
+//  STEP 3 — setLang (uses LANGS + functions from step 2)
+// ═══════════════════════════════════════════════════════════
 
 // ─── CORE setLang ───────────────────────────────
 function setLang(lang) {
@@ -1984,11 +1984,26 @@ function setLang(lang) {
 }
 
 
+// ═══════════════════════════════════════════════════════════
+//  STEP 4 — INIT
+// ═══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
   var sel = document.getElementById('lang-select');
   if (sel) sel.value = currentLang;
   setLang(currentLang);
+  applyStaticTickers();
+  loadEcoNews(null);
+  populateSelects();
+  loadLiveTickers();
+  setInterval(loadLiveTickers, 90000);
 });
+
+function toggleTheme() {
+  document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent = document.body.classList.contains('light')? '\u2600\uFE0F':'\u{1F319}';
+  localStorage.setItem('trendi-theme', document.body.classList.contains('light')?'light':'dark');
+}
+if (localStorage.getItem('trendi-theme')==='light') document.body.classList.add('light');
 
 </script>
 </body>
